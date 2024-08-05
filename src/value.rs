@@ -1,7 +1,10 @@
+use std::cell::{Cell, RefCell, RefMut};
+use std::ops::DerefMut;
 use crate::node::Node;
 
-type ReqCounterValue = u32;
+type ReqCounterValue = i32;
 
+// Remove if there are:
 enum ReqOperation {
     NodeValueCounter,
     GlobalCounterLessThan,
@@ -9,14 +12,13 @@ enum ReqOperation {
 }
 
 pub struct Value {
-    pub reqs: Vec<rclite::Rc<ValueReq>>,
-    pub required_by: Vec<rclite::Rc<ValueReq>>,
+    pub reqs: Vec<rclite::Rc<RefCell<ValueReq>>>,
+    pub required_by: Vec<rclite::Rc<RefCell<ValueReq>>>,
 }
 
 pub struct ValueReq {
     pub counter: ReqCounterValue,
     pub operation: ReqOperation,
-    pub value: ReqCounterValue
 }
 
 impl Value {
@@ -27,16 +29,43 @@ impl Value {
         }
     }
 
-    pub fn add_callback(&mut self, node: &mut Node) {
+    pub fn add_value_req(&mut self, value_req: ValueReq, requirements: &mut [&mut Value]) {
+        let rc = rclite::Rc::new(RefCell::new(value_req));
 
+        for value in requirements.iter_mut() {
+            value.required_by.push(rc.clone());
+        }
+
+        self.reqs.push(rc);
     }
 
-    pub fn remove_callback(&mut self, node: &mut Node) {
-        for req in self.required_by {
+    fn required_by_iter(&mut self) -> impl Iterator<Item = RefMut<ValueReq>> {
+        self.required_by.iter_mut().map(|req| { req.borrow_mut() })
+    }
+
+    pub fn add_callback(&mut self) {
+        for mut req in self.required_by_iter() {
+
+            match req.operation {
+                ReqOperation::NodeValueCounter => {
+                    req.counter += 1;
+                }
+                ReqOperation::GlobalCounterLessThan => {
+                    req.counter += 1;
+                }
+                ReqOperation::GlobalCounterMoreThan => {}
+            }
+        }
+    }
+
+    pub fn remove_callback(&mut self) {
+        for mut req in self.required_by_iter() {
+
             match req.operation {
                 ReqOperation::NodeValueCounter => {
                     req.counter -= 1;
 
+                    assert!(req.counter >= 0, "The counter should not be negative, because if a value removes it should fist add one");
                     if req.counter == 0 {
                         // remove other node
                     }
@@ -44,7 +73,7 @@ impl Value {
                 ReqOperation::GlobalCounterLessThan => {
                     req.counter -= 1;
 
-                    if req.counter <= req.value {
+                    if req.counter <= 0 {
                         // remove other node
                     }
                 }
@@ -53,27 +82,24 @@ impl Value {
         }
     }
 
-    pub fn select_callback(&mut self, node: &mut Node) {
-        for req in self.required_by {
+    pub fn select_callback(&mut self) {
+        for mut req in self.required_by_iter() {
             match req.operation {
                 ReqOperation::GlobalCounterMoreThan => {
-                    req.counter -= 1;
+                    req.counter += 1;
+
+                    if req.counter >= 0 {
+                        // remove other node
+                    }
                 }
                 ReqOperation::NodeValueCounter | ReqOperation::GlobalCounterLessThan => {}
             }
         }
     }
 
-    pub fn unselect_callback(&mut self, node: &mut Node) {
-        for req in self.required_by {
+    pub fn unselect_callback(&mut self) {
+        for mut req in self.required_by_iter() {
             match req.operation {
-                ReqOperation::GlobalCounterExact => {
-                    if req.counter == req.value {
-                        // remove other node
-                    }
-
-                    req.counter -= 1;
-                }
                 ReqOperation::GlobalCounterMoreThan => {
                     req.counter -= 1;
                 }
@@ -88,31 +114,20 @@ impl ValueReq {
         ValueReq {
             counter: 0,
             operation: ReqOperation::NodeValueCounter,
-            value: 0,
         }
     }
 
     pub fn new_global_counter_more_than(value: ReqCounterValue) -> Self {
         ValueReq {
-            counter: 0,
+            counter: -value,
             operation: ReqOperation::GlobalCounterMoreThan,
-            value,
-        }
-    }
-
-    pub fn new_global_counter_exact(value: ReqCounterValue) -> Self {
-        ValueReq {
-            counter: 0,
-            operation: ReqOperation::GlobalCounterExact,
-            value,
         }
     }
 
     pub fn new_global_counter_less_than(value: ReqCounterValue) -> Self {
         ValueReq {
-            counter: 0,
+            counter: value,
             operation: ReqOperation::GlobalCounterLessThan,
-            value,
         }
     }
 }

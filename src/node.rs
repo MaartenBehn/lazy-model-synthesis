@@ -17,9 +17,9 @@ impl Node {
         }
     }
 
-    pub fn add_value(&mut self, value: Value) {
+    pub fn add_value(&mut self, mut value: Value) {
+        value.add_callback();
         self.values.push(value);
-        self.values.last_mut().unwrap().add_callback(self);
     }
 
     pub fn remove_value(&mut self, index: ValueIndex) {
@@ -28,18 +28,18 @@ impl Node {
         }
 
         let mut removed_value = self.values.swap_remove(index);
-        removed_value.remove_callback(self);
+        removed_value.remove_callback();
     }
 
     pub fn select_value(&mut self, index: ValueIndex) {
         self.selected_index = index;
-        self.values[index].select_callback(self);
+        self.values[index].select_callback();
 
     }
 
     pub fn unselect_value(&mut self, index: ValueIndex) {
         self.selected_index = VALUE_INDEX_NONE;
-        self.values[index].unselect_callback(self);
+        self.values[index].unselect_callback();
 
     }
 }

@@ -13,13 +13,15 @@ fn main() {
     graph.nodes.push(Node::new());
     graph.nodes.push(Node::new());
 
-    graph.nodes[0].values.push(Value::new());
-    graph.nodes[1].values.push(Value::new());
+    let mut value_0 = Value::new();
+    let mut value_1 = Value::new();
 
-    graph.nodes[0].values[0].reqs.push(rclite::Rc::new(ValueReq::new()));
-    let rc = graph.nodes[0].values[0].reqs[0].clone();
-    graph.nodes[1].values[0].required_by.push(rc);
+    let value_req = ValueReq::new_node_value_counter();
 
+    value_0.add_value_req(value_req, &mut [&mut value_1]);
+
+    graph.nodes[0].add_value(value_0);
+    graph.nodes[1].add_value(value_1);
 
     println!("Done")
 }
