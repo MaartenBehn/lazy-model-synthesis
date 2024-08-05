@@ -2,7 +2,7 @@
 
 pkgs.mkShell rec {
 
-  name = "lazy-wfc";
+  name = "lazy-model-synthesis";
   RUSTC_VERSION = "stable";
 
   shellHook = ''
