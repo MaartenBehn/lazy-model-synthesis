@@ -6,5 +6,5 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-entity_data = "1.11.1"
 rclite = "0.2.4"
+ultraviolet = { version = "0.9", features = [ "f64", "int" ] }

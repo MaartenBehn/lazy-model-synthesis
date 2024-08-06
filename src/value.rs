@@ -1,42 +1,51 @@
 use std::cell::{Cell, RefCell, RefMut};
 use std::ops::DerefMut;
+use rclite::Rc;
 use crate::node::Node;
 
 type ReqCounterValue = i32;
 
 // Remove if there are:
+#[derive(Clone)]
 enum ReqOperation {
     NodeValueCounter,
     GlobalCounterLessThan,
     GlobalCounterMoreThan,
 }
 
-pub struct Value {
-    pub reqs: Vec<rclite::Rc<RefCell<ValueReq>>>,
-    pub required_by: Vec<rclite::Rc<RefCell<ValueReq>>>,
+#[derive(Clone)]
+pub struct Value<D> {
+    pub value_data: D,
+    reqs: Vec<Rc<RefCell<ValueReq>>>,
+    required_by: Vec<Rc<RefCell<ValueReq>>>,
 }
 
+#[derive(Clone)]
 pub struct ValueReq {
-    pub counter: ReqCounterValue,
-    pub operation: ReqOperation,
+    counter: ReqCounterValue,
+    operation: ReqOperation,
 }
 
-impl Value {
-    pub fn new() -> Self {
+
+
+
+impl<D> Value<D> {
+    pub fn new(user_data: D) -> Self {
         Value {
+            value_data: user_data,
             reqs: vec![],
             required_by: vec![] ,
         }
     }
 
-    pub fn add_value_req(&mut self, value_req: ValueReq, requirements: &mut [&mut Value]) {
-        let rc = rclite::Rc::new(RefCell::new(value_req));
-
-        for value in requirements.iter_mut() {
-            value.required_by.push(rc.clone());
-        }
-
+    pub fn add_value_req(&mut self, value_req: ValueReq) -> &Rc<RefCell<ValueReq>> {
+        let rc = Rc::new(RefCell::new(value_req));
         self.reqs.push(rc);
+        self.reqs.last().unwrap()
+    }
+
+    pub fn add_ref(&mut self, rc: Rc<RefCell<ValueReq>>) {
+        self.required_by.push(rc);
     }
 
     fn required_by_iter(&mut self) -> impl Iterator<Item = RefMut<ValueReq>> {
