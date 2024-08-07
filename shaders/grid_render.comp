@@ -1,37 +1,35 @@
 #version 450
 
+#define ZOOM 20
+
 layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 layout(binding = 0, rgba8) uniform writeonly image2D img;
 
+#define CHUNKSIZE 32
+
+layout(binding = 1) buffer ChunkBuffer {
+  uint[] data;
+} chunk_buffer;
+
+#define POS_IN_BOUNDS(pos) pos.x < CHUNKSIZE && pos.y < CHUNKSIZE
+#define GET_NODE_AT(pos) chunk_buffer.data[pos.x * CHUNKSIZE + pos.y]
+
 
 void main () {
 
-  // Normalized pixel coordinates (from 0 to 1)
-  vec2 uv = (gl_GlobalInvocationID.xy - 0.5 * imageSize(img)) / imageSize(img) * vec2(2, -2);
+  uvec2 pos = gl_GlobalInvocationID.xy;
 
-  float   real  = uv.x;
-  float   imag  = uv.y;
-  float   Creal = real;
-  float   Cimag = imag;
+  vec4 color = vec4(0.0);
 
-  float r2 = 0.0;
+  uvec2 chunk_pos = pos / ZOOM;
+  if (POS_IN_BOUNDS(chunk_pos)) {
+    uint node_data = GET_NODE_AT(chunk_pos);
 
-  // Stupid number of iterations to stress gpu
-  for (float iter = 0.0; iter < 1000 && r2 < 4.0; ++iter) {
-    float tempreal = real;
-
-    real = (tempreal * tempreal) - (imag * imag) + Creal;
-    imag = 2.0 * tempreal * imag + Cimag;
-    r2   = (real * real) + (imag * imag);
+    if (node_data != 0) {
+      color = vec4(1.0, 0.0, 0.0, 1.0);
+    }
   }
-
-  vec4 color;
-
-  if (r2 < 4.0)
-    color = vec4(1.0);
-  else
-    color = vec4(0.0);
 
   imageStore(img, ivec2(gl_GlobalInvocationID.xy), color);
 }

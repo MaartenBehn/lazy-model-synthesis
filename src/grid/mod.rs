@@ -3,18 +3,20 @@ mod grid_util;
 mod dispatcher;
 pub mod visulation;
 mod renderer;
+mod node_render_data;
 
 use std::iter::repeat_with;
 use octa_force::glam::IVec2;
 use crate::dispatcher::Dispatcher;
 use crate::grid::dispatcher::VecDispatcher;
+use crate::grid::node_render_data::NodeRenderData;
 use crate::grid::rules::{NeighborReq, Rule, ValueType};
 use crate::node::Node;
 use crate::node_storage::NodeStorage;
 
 type ChunkIndex = usize;
 type NodeIndex = usize;
-const CHUNK_SIZE: usize = 32;
+pub const CHUNK_SIZE: usize = 32;
 
 pub struct Grid {
     chunk_size: IVec2,
@@ -26,6 +28,7 @@ pub struct Grid {
 pub struct Chunk {
     pos: IVec2,
     nodes: Vec<Node<ValueData>>,
+    render_data: Vec<NodeRenderData>
 }
 
 #[derive(Clone)]
@@ -44,9 +47,13 @@ impl Grid {
     }
 
     pub fn add_chunk(&mut self, pos: IVec2) {
+        let mut node_render_data = NodeRenderData::default();
+        node_render_data.set_selector(true);
+
         self.chunks.push(Chunk {
             pos,
             nodes: repeat_with(|| Node::default()).take(CHUNK_SIZE * CHUNK_SIZE).collect::<Vec<_>>(),
+            render_data: vec![node_render_data; CHUNK_SIZE * CHUNK_SIZE]
         })
     }
 

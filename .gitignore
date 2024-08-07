@@ -8,3 +8,4 @@ Cargo.lock
 .envrc
 
 /target
+/scripts/graph.png

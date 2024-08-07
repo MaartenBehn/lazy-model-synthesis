@@ -5,7 +5,7 @@ use octa_force::{BaseApp, egui, glam};
 use octa_force::egui::{Id, Image};
 use octa_force::egui::load::SizedTexture;
 use octa_force::egui::panel::Side;
-use octa_force::glam::{UVec2, vec2};
+use octa_force::glam::{IVec2, UVec2, vec2};
 use octa_force::log::info;
 use octa_force::vulkan::ash::vk::AttachmentLoadOp;
 use crate::grid::Grid;
@@ -25,7 +25,9 @@ pub struct GridVisulation {
 impl GridVisulation {
     pub fn new(base: &mut BaseApp<LazyModelSynthesis>) -> Result<Self> {
 
-        let grid = Grid::new();
+        let mut grid = Grid::new();
+        grid.add_chunk(IVec2::ZERO);
+
         let mut gui = Gui::new(
             &base.context,
             base.swapchain.format,
@@ -34,7 +36,7 @@ impl GridVisulation {
             base.num_frames
         )?;
 
-        let grid_renderer = GridRenderer::new(&mut base.context, base.num_frames, &mut gui.renderer)?;
+        let grid_renderer = GridRenderer::new(&mut base.context, &mut gui.renderer, base.num_frames, 1)?;
 
         Ok(GridVisulation {
             grid,
@@ -50,6 +52,7 @@ impl GridVisulation {
         delta_time: Duration,
     ) -> Result<()> {
 
+        self.grid_renderer.set_chunk_data(0, &self.grid.chunks[0].render_data);
         self.grid_renderer.update(&mut base.context, base.swapchain.format, frame_index);
 
         Ok(())

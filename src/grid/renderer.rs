@@ -1,4 +1,5 @@
 use std::mem;
+use std::mem::{align_of, size_of};
 use octa_force::egui::{Image, TextureId};
 use octa_force::egui_ash_renderer::Renderer;
 use octa_force::glam::UVec2;
@@ -7,12 +8,13 @@ use octa_force::log::info;
 use octa_force::puffin_egui::puffin;
 use octa_force::vulkan::{Buffer, CommandBuffer, ComputePipeline, ComputePipelineCreateInfo, Context, DescriptorPool, DescriptorSet, DescriptorSetLayout, ImageBarrier, PipelineLayout, Sampler, WriteDescriptorSet, WriteDescriptorSetKind};
 use octa_force::vulkan::ash::vk;
-use octa_force::vulkan::ash::vk::{ComputePipelineCreateInfoBuilder, Format, ImageUsageFlags};
+use octa_force::vulkan::ash::vk::{BufferUsageFlags, ComputePipelineCreateInfoBuilder, Format, ImageUsageFlags};
 use octa_force::anyhow::Result;
 use octa_force::egui::load::SizedTexture;
 use octa_force::vulkan::gpu_allocator::MemoryLocation;
+use crate::grid::CHUNK_SIZE;
+use crate::grid::node_render_data::NodeRenderData;
 use crate::grid::visulation::GridVisulation;
-
 
 const DISPATCH_GROUP_SIZE_X: u32 = 32;
 const DISPATCH_GROUP_SIZE_Y: u32 = 32;
@@ -35,13 +37,15 @@ pub struct GridRenderer {
     render_descriptor_sets: Vec<DescriptorSet>,
     render_pipeline_layout: PipelineLayout,
     render_pipeline: ComputePipeline,
+
+    chunk_buffer: Buffer
 }
 
 
 
 impl GridRenderer {
 
-    pub fn new(context: &mut Context, num_frames: usize, egui_renderer: &mut Renderer) -> Result<Self> {
+    pub fn new(context: &mut Context, egui_renderer: &mut Renderer, num_frames: usize, loaded_chunks: usize) -> Result<Self> {
 
         let descriptor_pool = context.create_descriptor_pool(
             (num_frames * 2) as u32,
@@ -49,6 +53,10 @@ impl GridRenderer {
                 vk::DescriptorPoolSize {
                     ty: vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
                     descriptor_count: (num_frames * 2) as u32,
+                },
+                vk::DescriptorPoolSize {
+                    ty: vk::DescriptorType::STORAGE_BUFFER,
+                    descriptor_count: num_frames as u32,
                 },
             ],
         ).unwrap();
@@ -68,6 +76,13 @@ impl GridRenderer {
                 binding: 0,
                 descriptor_count: 1,
                 descriptor_type: vk::DescriptorType::STORAGE_IMAGE,
+                stage_flags: vk::ShaderStageFlags::COMPUTE,
+                ..Default::default()
+            },
+            vk::DescriptorSetLayoutBinding {
+                binding: 1,
+                descriptor_count: 1,
+                descriptor_type: vk::DescriptorType::STORAGE_BUFFER,
                 stage_flags: vk::ShaderStageFlags::COMPUTE,
                 ..Default::default()
             },
@@ -93,8 +108,6 @@ impl GridRenderer {
             render_descriptor_sets.push(render_descriptor_set);
         }
 
-
-
         let render_pipeline_layout = context.create_pipeline_layout(
             &[&render_descriptor_layout],
             &[]
@@ -104,6 +117,12 @@ impl GridRenderer {
             ComputePipelineCreateInfo {
                 shader_source: &include_bytes!("../../shaders/grid_render.comp.spv")[..],
             },
+        )?;
+
+        let chunk_buffer = context.create_buffer(
+            BufferUsageFlags::STORAGE_BUFFER,
+            MemoryLocation::CpuToGpu,
+            (CHUNK_SIZE * CHUNK_SIZE * size_of::<NodeRenderData>()) as _
         )?;
 
         Ok(GridRenderer {
@@ -123,6 +142,8 @@ impl GridRenderer {
             render_descriptor_sets,
             render_pipeline_layout,
             render_pipeline,
+
+            chunk_buffer,
         })
     }
 
@@ -196,6 +217,12 @@ impl GridRenderer {
                             view: &image_and_view.view,
                         },
                     },
+                    WriteDescriptorSet {
+                        binding: 1,
+                        kind: WriteDescriptorSetKind::StorageBuffer {
+                            buffer: &self.chunk_buffer,
+                        },
+                    },
                 ]);
 
                 image_and_views.push(image_and_view);
@@ -209,6 +236,10 @@ impl GridRenderer {
 
             self.current_size = self.wanted_size;
         }
+    }
+
+    pub fn set_chunk_data(&mut self, chunk_index: usize, chunk_data: &[NodeRenderData]) {
+        self.chunk_buffer.copy_data_to_buffer_complex(chunk_data, chunk_index * CHUNK_SIZE * CHUNK_SIZE, align_of::<NodeRenderData>()).unwrap()
     }
 
     pub fn render(&mut self, command_buffer: &CommandBuffer, frame_index: usize) {
