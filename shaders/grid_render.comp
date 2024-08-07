@@ -16,17 +16,23 @@ layout(binding = 1) buffer ChunkBuffer {
 #define GET_NODE_AT(pos) chunk_buffer.data[pos.x * CHUNKSIZE + pos.y]
 
 
+bool at_boarder(vec2 v, float border_size) {
+  return v.x < border_size || (1 - v.x) < border_size || v.y < border_size || (1 - v.y) < border_size;
+}
+
 void main () {
 
   uvec2 pos = gl_GlobalInvocationID.xy;
 
   vec4 color = vec4(0.0);
 
-  uvec2 chunk_pos = pos / ZOOM;
-  if (POS_IN_BOUNDS(chunk_pos)) {
-    uint node_data = GET_NODE_AT(chunk_pos);
+  uvec2 node_pos = pos / ZOOM;
+  vec2 in_node_pos = mod(vec2(pos), ZOOM) / ZOOM;
 
-    if (node_data != 0) {
+  if (POS_IN_BOUNDS(node_pos)) {
+    uint node_data = GET_NODE_AT(node_pos);
+
+    if (node_data != 0 && at_boarder(in_node_pos, 0.05)) {
       color = vec4(1.0, 0.0, 0.0, 1.0);
     }
   }
