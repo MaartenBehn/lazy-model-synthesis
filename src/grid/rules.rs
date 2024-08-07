@@ -1,4 +1,4 @@
-use ultraviolet::IVec2;
+use octa_force::glam::IVec2;
 
 #[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
 pub enum ValueType {

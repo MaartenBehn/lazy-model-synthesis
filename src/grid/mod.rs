@@ -1,9 +1,11 @@
 mod rules;
 mod grid_util;
 mod dispatcher;
+pub mod visulation;
+mod renderer;
 
 use std::iter::repeat_with;
-use ultraviolet::{IVec2};
+use octa_force::glam::IVec2;
 use crate::dispatcher::Dispatcher;
 use crate::grid::dispatcher::VecDispatcher;
 use crate::grid::rules::{NeighborReq, Rule, ValueType};
@@ -34,7 +36,7 @@ pub struct ValueData {
 impl Grid {
     pub fn new() -> Self {
         Grid {
-            chunk_size: IVec2::one() * CHUNK_SIZE as i32,
+            chunk_size: IVec2::ONE * CHUNK_SIZE as i32,
             chunks: vec![],
             rules: vec![],
             dispatcher: VecDispatcher::default()
@@ -109,7 +111,7 @@ mod tests {
     #[test]
     fn example_grid() {
        let mut grid = Grid::new();
-        grid.add_chunk(IVec2::zero());
+        grid.add_chunk(IVec2::ZERO);
         grid.rules = get_example_rules();
         grid.add_initial_value(IVec2::new(1, 1), ValueData::new(ValueType::Stone));
 

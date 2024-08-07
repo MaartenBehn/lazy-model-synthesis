@@ -24,6 +24,7 @@ pkgs.mkShell rec {
     cmake
     fontconfig
     vulkan-tools
+    graphviz.out
   ];
 
   buildInputs = with pkgs; [

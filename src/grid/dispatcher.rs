@@ -1,4 +1,4 @@
-use ultraviolet::IVec2;
+use octa_force::glam::IVec2;
 use crate::dispatcher::Dispatcher;
 use crate::node::ValueIndex;
 

@@ -1,5 +1,5 @@
-use ultraviolet::{IVec2, IVec3};
-use crate::grid::{Chunk, CHUNK_SIZE, ChunkIndex, Grid, NodeIndex, ValueData};
+use octa_force::glam::IVec2;
+use crate::grid::{ChunkIndex, Grid, NodeIndex, ValueData};
 use crate::node::Node;
 
 pub fn mod_ivec2(v: IVec2, t: IVec2) -> IVec2 {
