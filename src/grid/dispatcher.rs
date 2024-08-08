@@ -1,18 +1,19 @@
 use octa_force::glam::IVec2;
 use crate::dispatcher::Dispatcher;
+use crate::grid::grid::{ChunkIndex, NodeIndex};
 use crate::node::ValueIndex;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct VecDispatcher {
-    add: Vec<(IVec2, ValueIndex)>
+    add: Vec<((ChunkIndex, NodeIndex), ValueIndex)>
 }
 
-impl Dispatcher<IVec2> for VecDispatcher {
-    fn push_add(&mut self, node_pos: IVec2, value_index: ValueIndex) {
-        self.add.push((node_pos, value_index))
+impl Dispatcher<(ChunkIndex, NodeIndex)> for VecDispatcher {
+    fn push_add(&mut self, fast_lookup: (ChunkIndex, NodeIndex), value_index: ValueIndex) {
+        self.add.push((fast_lookup, value_index))
     }
 
-    fn get_add(&mut self) -> Option<(IVec2, ValueIndex)> {
+    fn pop_add(&mut self) -> Option<((ChunkIndex, NodeIndex), ValueIndex)> {
         self.add.pop()
     }
 }

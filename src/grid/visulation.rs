@@ -2,31 +2,32 @@ use std::time::Duration;
 use octa_force::gui::Gui;
 use octa_force::anyhow::*;
 use octa_force::{BaseApp, egui, glam};
-use octa_force::egui::{Id, Image};
-use octa_force::egui::load::SizedTexture;
+use octa_force::egui::{Id};
 use octa_force::egui::panel::Side;
-use octa_force::glam::{IVec2, UVec2, vec2};
-use octa_force::log::info;
+use octa_force::glam::{IVec2, vec2};
 use octa_force::vulkan::ash::vk::AttachmentLoadOp;
-use crate::grid::Grid;
+use crate::grid::grid::{Grid, ValueData};
+use crate::grid::grid_debugger::GridDebugger;
 use crate::grid::renderer::GridRenderer;
+use crate::grid::rules::{get_example_rules, ValueType};
 use crate::LazyModelSynthesis;
+use crate::node_storage::NodeStorage;
 
 
 pub struct GridVisulation {
-    pub grid: Grid,
     pub gui: Gui,
 
+    pub grid_debugger: GridDebugger,
     pub grid_renderer: GridRenderer,
 }
-
-
 
 impl GridVisulation {
     pub fn new(base: &mut BaseApp<LazyModelSynthesis>) -> Result<Self> {
 
         let mut grid = Grid::new();
         grid.add_chunk(IVec2::ZERO);
+        grid.rules = get_example_rules();
+        grid.add_initial_value(IVec2::new(0, 0), ValueData::new(ValueType::Stone));
 
         let mut gui = Gui::new(
             &base.context,
@@ -36,10 +37,11 @@ impl GridVisulation {
             base.num_frames
         )?;
 
+        let grid_debugger = GridDebugger::from_grid(grid, 10);
         let grid_renderer = GridRenderer::new(&mut base.context, &mut gui.renderer, base.num_frames, 1)?;
 
         Ok(GridVisulation {
-            grid,
+            grid_debugger,
             gui,
             grid_renderer,
         })
@@ -51,8 +53,8 @@ impl GridVisulation {
         frame_index: usize,
         delta_time: Duration,
     ) -> Result<()> {
-
-        self.grid_renderer.set_chunk_data(0, &self.grid.chunks[0].render_data);
+        self.grid_debugger.tick_forward(true);
+        self.grid_renderer.set_chunk_data(0, &self.grid_debugger.get_grid().chunks[0].render_data);
         self.grid_renderer.update(&mut base.context, base.swapchain.format, frame_index);
 
         Ok(())
@@ -100,6 +102,6 @@ impl GridVisulation {
     }
 }
 
-pub fn egui_vec2_to_glam_vec2(v: egui::Vec2) -> glam::Vec2 {
+fn egui_vec2_to_glam_vec2(v: egui::Vec2) -> glam::Vec2 {
     vec2(v.x, v.y)
 }

@@ -12,7 +12,7 @@ use octa_force::vulkan::ash::vk::{BufferUsageFlags, ComputePipelineCreateInfoBui
 use octa_force::anyhow::Result;
 use octa_force::egui::load::SizedTexture;
 use octa_force::vulkan::gpu_allocator::MemoryLocation;
-use crate::grid::CHUNK_SIZE;
+use crate::grid::grid::CHUNK_SIZE;
 use crate::grid::node_render_data::NodeRenderData;
 use crate::grid::visulation::GridVisulation;
 

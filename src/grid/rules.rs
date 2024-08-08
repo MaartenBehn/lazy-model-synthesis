@@ -1,6 +1,8 @@
+use num_enum::{IntoPrimitive, TryFromPrimitive};
 use octa_force::glam::IVec2;
 
-#[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, IntoPrimitive, TryFromPrimitive)]
+#[repr(u32)]
 pub enum ValueType {
     Stone = 0,
     Grass,
@@ -28,6 +30,7 @@ pub fn get_example_rules() -> Vec<Rule> {
                     req_type: ValueType::Stone,
                     offset: IVec2::new(1, 0),
                 },
+
                 NeighborReq {
                     req_type: ValueType::Stone,
                     offset: IVec2::new(-1, 0),

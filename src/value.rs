@@ -24,9 +24,6 @@ pub struct ValueReq {
     operation: ReqOperation,
 }
 
-
-
-
 impl<D> Value<D> {
     pub fn new(user_data: D) -> Self {
         Value {
