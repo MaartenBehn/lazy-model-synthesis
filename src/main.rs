@@ -64,7 +64,7 @@ impl App for LazyModelSynthesis {
     }
 
     fn on_window_event(&mut self, base: &mut BaseApp<Self>, event: &WindowEvent) -> Result<()> {
-
+        self.grid_renderer.on_window_event(base, event)?;
 
         Ok(())
     }
