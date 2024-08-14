@@ -10,3 +10,4 @@ edition = "2021"
 octa-force = { git = "https://github.com/MaartenBehn/octa-force-rs.git", version = "0.1.17" }
 rclite = "0.2.4"
 num_enum = "0.7.3"
+fastrand = "2.1.0"

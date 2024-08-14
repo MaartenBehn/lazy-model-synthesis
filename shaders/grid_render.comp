@@ -28,7 +28,7 @@ vec4 rgb(uint r, uint g, uint b) {
 #define GRASS_COLOR rgb(0, 128, 0)
 #define SAND_COLOR rgb(226, 202, 118)
 
-#define ZOOM 30
+#define PIXELS_PER_NODE 30
 #define BORDER_SIZES 0.02
 #define RECT_SIZE 0.2
 
@@ -64,7 +64,7 @@ vec4 node_color(uint data) {
 }
 
 bool at_boarder(vec2 v, float border_size) {
-  return v.x < border_size || (1 - v.x) < border_size || v.y < border_size || (1 - v.y) < border_size;
+  return v.x < border_size || (1 - v.x) < border_size * 2 || v.y < border_size || (1 - v.y) < border_size * 2;
 }
 
 bool in_inner_rect(vec2 v, vec2 min, vec2 max) {
@@ -151,8 +151,8 @@ void main () {
 
   vec4 color = vec4(0.0);
 
-  uvec2 node_pos = pos / ZOOM;
-  vec2 in_node_pos = mod(vec2(pos), ZOOM) / ZOOM;
+  uvec2 node_pos = pos / PIXELS_PER_NODE;
+  vec2 in_node_pos = mod(vec2(pos), PIXELS_PER_NODE) / PIXELS_PER_NODE;
 
   if (POS_IN_BOUNDS(node_pos)) {
     uint data = GET_NODE_AT(node_pos);

@@ -2,7 +2,7 @@ use std::mem;
 use std::mem::{align_of, size_of};
 use octa_force::egui::{Image, TextureId};
 use octa_force::egui_ash_renderer::Renderer;
-use octa_force::glam::UVec2;
+use octa_force::glam::{UVec2, Vec2};
 use octa_force::ImageAndView;
 use octa_force::log::info;
 use octa_force::puffin_egui::puffin;
@@ -41,11 +41,14 @@ pub struct GridRenderer {
     chunk_buffer: Buffer
 }
 
-
-
 impl GridRenderer {
 
-    pub fn new(context: &mut Context, egui_renderer: &mut Renderer, num_frames: usize, loaded_chunks: usize) -> Result<Self> {
+    pub fn new(
+        context: &mut Context,
+        egui_renderer: &mut Renderer,
+        num_frames: usize,
+        loaded_chunks: usize
+    ) -> Result<Self> {
 
         let descriptor_pool = context.create_descriptor_pool(
             (num_frames * 2) as u32,
@@ -159,11 +162,14 @@ impl GridRenderer {
             self.to_drop_image_data.swap_remove(i);
         }
 
-        let need_to_recreate = !self.image_and_views.is_empty() && self.current_size != self.wanted_size;
+        let need_to_recreate = !self.image_and_views.is_empty()
+            && self.current_size != self.wanted_size;
 
         let max_supported_size = context.physical_device.limits.max_image_dimension2_d;
-        let wanted_size_ok = self.wanted_size.x > 0 && self.wanted_size.x < max_supported_size &&
-            self.wanted_size.x > 0 && self.wanted_size.y < max_supported_size;
+        let wanted_size_ok = self.wanted_size.x > 0
+            && self.wanted_size.x < max_supported_size
+            && self.wanted_size.x > 0
+            && self.wanted_size.y < max_supported_size;
 
         if (need_to_recreate || self.image_and_views.is_empty()) && wanted_size_ok {
             info!("Creating Renderer {}x{}", self.wanted_size.x, self.wanted_size.y);
@@ -239,7 +245,10 @@ impl GridRenderer {
     }
 
     pub fn set_chunk_data(&mut self, chunk_index: usize, chunk_data: &[NodeRenderData]) {
-        self.chunk_buffer.copy_data_to_buffer_complex(chunk_data, chunk_index * CHUNK_SIZE * CHUNK_SIZE, align_of::<NodeRenderData>()).unwrap()
+        self.chunk_buffer.copy_data_to_buffer_complex(
+            chunk_data,
+            chunk_index * CHUNK_SIZE * CHUNK_SIZE, align_of::<NodeRenderData>()
+        ).unwrap()
     }
 
     pub fn render(&mut self, command_buffer: &CommandBuffer, frame_index: usize) {

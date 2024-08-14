@@ -3,7 +3,7 @@
 use std::iter::repeat_with;
 use octa_force::glam::IVec2;
 use crate::dispatcher::Dispatcher;
-use crate::grid::dispatcher::VecDispatcher;
+use crate::grid::dispatcher::{RandomDispatcher, VecDispatcher};
 use crate::grid::node_render_data::NodeRenderData;
 use crate::grid::rules::{NeighborReq, Rule, ValueType};
 use crate::node::Node;
@@ -19,6 +19,7 @@ pub struct Grid {
     pub chunks: Vec<Chunk>,
     pub rules: Vec<Rule>,
     pub dispatcher: VecDispatcher,
+    // pub dispatcher: RandomDispatcher,
 }
 
 #[derive(Clone)]
@@ -39,7 +40,8 @@ impl Grid {
             chunk_size: IVec2::ONE * CHUNK_SIZE as i32,
             chunks: vec![],
             rules: vec![],
-            dispatcher: VecDispatcher::default()
+            dispatcher: VecDispatcher::default(),
+            // dispatcher: RandomDispatcher::default(),
         }
     }
 
@@ -74,10 +76,9 @@ impl NodeStorage for Grid {
     type NodeIdentifier = IVec2;
     type FastLookup = (ChunkIndex, NodeIndex);
     type Req = NeighborReq;
+    type ShuffleSeed = usize;
 
-    fn get_dispatcher(&mut self) -> &mut impl Dispatcher<Self::FastLookup> {
-        &mut self.dispatcher
-    }
+    fn get_dispatcher(&mut self) -> &mut impl Dispatcher<Self::FastLookup> { &mut self.dispatcher }
 
     fn get_fast_lookup_from_identifier(&mut self, node_pos: IVec2) -> Self::FastLookup {
         self.get_chunk_and_node_index_from_global_pos(node_pos)

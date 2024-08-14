@@ -1,6 +1,7 @@
 use crate::grid::grid::Grid;
 use crate::node_storage::NodeStorage;
 
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum TickType {
     None,
     Back,
@@ -8,13 +9,14 @@ pub enum TickType {
     ForwardSave,
 }
 
-pub struct GridDebugger{
-    start_grid: Grid,
-    grids: Vec<Grid>,
-    current: usize,
-    length: usize,
 
-    next_tick: TickType
+pub struct GridDebugger{
+    pub start_grid: Grid,
+    pub grids: Vec<Grid>,
+    pub current: usize,
+    pub length: usize,
+
+    pub next_tick: TickType,
 }
 
 impl GridDebugger {
@@ -28,10 +30,6 @@ impl GridDebugger {
         }
     }
 
-    pub fn set_next(&mut self, t: TickType) {
-        self.next_tick = t;
-    }
-
     pub fn tick(&mut self) {
         match self.next_tick {
             TickType::None => {}
@@ -39,8 +37,6 @@ impl GridDebugger {
             TickType::Forward => {self.tick_forward(false)}
             TickType::ForwardSave => {self.tick_forward(true)}
         }
-
-        self.next_tick = TickType::None;
     }
 
     fn tick_forward(&mut self, save_tick: bool) {

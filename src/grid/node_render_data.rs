@@ -12,9 +12,7 @@ const RESET_QUEUE_OFFSET: usize = 2;
 const MAX_SELECTED_BITS: usize = 4;
 const MAX_VALUE_TYPE_INDEX: usize = 2_usize.pow(MAX_SELECTED_BITS as u32);
 
-// Selected Value       0 -  3
-// ValueTypes possible  4 - 19
-// SE               29 - 31
+pub const NUM_VALUE_TYPES: u32 = 3;
 
 #[derive(Copy, Clone, Default)]
 pub struct NodeRenderData {

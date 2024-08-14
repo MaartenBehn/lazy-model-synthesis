@@ -1,5 +1,4 @@
 use std::fmt::Debug;
-use std::process::id;
 use crate::dispatcher::Dispatcher;
 use crate::node::{Node, ValueIndex};
 use crate::value::ValueReq;
@@ -9,7 +8,8 @@ pub trait NodeStorage {
     type ValueData: Copy;
     type NodeIdentifier: Copy + Debug;
     type FastLookup: Copy;
-    type Req;
+    type Req: Copy;
+    type ShuffleSeed: Copy;
 
     fn add_initial_value(&mut self, identifier: Self::NodeIdentifier, value_data: Self::ValueData) -> ValueIndex {
         let fast_lookup = self.get_fast_lookup_from_identifier(identifier);
@@ -49,9 +49,8 @@ pub trait NodeStorage {
 
         let node = self.get_mut_node_from_fast_lookup(node_fast_lookup);
         let value_data = node.values[value_index].value_data.clone();
-
+        
         for req in self.get_reqs_for_value_data(&value_data) {
-
             let req_identifier = self.get_req_node_identifier(identifier, &req);
             if !self.is_identifier_valid(req_identifier) {
                 continue
@@ -77,7 +76,7 @@ pub trait NodeStorage {
 
                 self.get_dispatcher().push_add(neighbor_fast_lookup, neighbor_value_index);
 
-                self.on_push_add_queue_callback(neighbor_fast_lookup, value_data);
+                self.on_push_add_queue_callback(neighbor_fast_lookup, req_value_data);
             } else {
                 neighbor_node.values[neighbor_value_index.unwrap()].add_ref(rc);
             }
@@ -108,6 +107,7 @@ pub trait NodeStorage {
     fn value_data_matches_req(value_data: &Self::ValueData, req: &Self::Req) -> bool;
 
     fn get_value_data_for_req(req: Self::Req) -> Self::ValueData;
+
 
     // Callbacks for debug rendering
     fn on_add_value_callback(&mut self, fast_lookup: Self::FastLookup, value_data: Self::ValueData);
