@@ -2,19 +2,18 @@ use std::mem;
 use std::mem::{align_of, size_of};
 use octa_force::egui::{Image, TextureId};
 use octa_force::egui_ash_renderer::Renderer;
-use octa_force::glam::{UVec2, Vec2};
+use octa_force::glam::UVec2;
 use octa_force::ImageAndView;
 use octa_force::log::info;
 use octa_force::puffin_egui::puffin;
 use octa_force::vulkan::{Buffer, CommandBuffer, ComputePipeline, ComputePipelineCreateInfo, Context, DescriptorPool, DescriptorSet, DescriptorSetLayout, ImageBarrier, PipelineLayout, Sampler, WriteDescriptorSet, WriteDescriptorSetKind};
 use octa_force::vulkan::ash::vk;
-use octa_force::vulkan::ash::vk::{BufferUsageFlags, ComputePipelineCreateInfoBuilder, Format, ImageUsageFlags};
+use octa_force::vulkan::ash::vk::{BufferUsageFlags, Format, ImageUsageFlags};
 use octa_force::anyhow::Result;
 use octa_force::egui::load::SizedTexture;
 use octa_force::vulkan::gpu_allocator::MemoryLocation;
 use crate::grid::grid::CHUNK_SIZE;
-use crate::grid::node_render_data::NodeRenderData;
-use crate::grid::visulation::GridVisulation;
+use crate::grid::visulation::node_render_data::NodeRenderData;
 
 const DISPATCH_GROUP_SIZE_X: u32 = 32;
 const DISPATCH_GROUP_SIZE_Y: u32 = 32;
@@ -23,8 +22,8 @@ pub struct GridRenderer {
     pub wanted_size: UVec2,
     current_size: UVec2,
 
-    descriptor_pool: DescriptorPool,
-    egui_descriptor_layout: DescriptorSetLayout,
+    _descriptor_pool: DescriptorPool,
+    _egui_descriptor_layout: DescriptorSetLayout,
     egui_descriptor_sets: Vec<DescriptorSet>,
     sampler: Sampler,
 
@@ -33,7 +32,7 @@ pub struct GridRenderer {
 
     to_drop_image_data: Vec<(usize, Vec<ImageAndView>)>,
 
-    render_descriptor_layout: DescriptorSetLayout,
+    _render_descriptor_layout: DescriptorSetLayout,
     render_descriptor_sets: Vec<DescriptorSet>,
     render_pipeline_layout: PipelineLayout,
     render_pipeline: ComputePipeline,
@@ -47,7 +46,7 @@ impl GridRenderer {
         context: &mut Context,
         egui_renderer: &mut Renderer,
         num_frames: usize,
-        loaded_chunks: usize
+        _loaded_chunks: usize
     ) -> Result<Self> {
 
         let descriptor_pool = context.create_descriptor_pool(
@@ -118,7 +117,7 @@ impl GridRenderer {
         let render_pipeline = context.create_compute_pipeline(
             &render_pipeline_layout,
             ComputePipelineCreateInfo {
-                shader_source: &include_bytes!("../../shaders/grid_render.comp.spv")[..],
+                shader_source: &include_bytes!("../../../shaders/grid_render.comp.spv")[..],
             },
         )?;
 
@@ -132,8 +131,8 @@ impl GridRenderer {
             wanted_size: UVec2::ZERO,
             current_size: UVec2::ZERO,
 
-            descriptor_pool,
-            egui_descriptor_layout,
+            _descriptor_pool: descriptor_pool,
+            _egui_descriptor_layout: egui_descriptor_layout,
             egui_descriptor_sets,
             texture_ids,
             sampler,
@@ -141,7 +140,7 @@ impl GridRenderer {
             image_and_views: vec![],
             to_drop_image_data: vec![],
 
-            render_descriptor_layout,
+            _render_descriptor_layout: render_descriptor_layout,
             render_descriptor_sets,
             render_pipeline_layout,
             render_pipeline,

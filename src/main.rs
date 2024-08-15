@@ -11,7 +11,7 @@ mod node_storage;
 mod grid;
 mod dispatcher;
 mod history;
-mod node_identifier;
+mod identifier;
 mod util;
 
 const WIDTH: u32 = 1280; // 2200;
@@ -72,7 +72,7 @@ impl App for LazyModelSynthesis {
         Ok(())
     }
 
-    fn on_recreate_swapchain(&mut self, base: &mut BaseApp<Self>) -> Result<()> {
+    fn on_recreate_swapchain(&mut self, _base: &mut BaseApp<Self>) -> Result<()> {
 
 
 

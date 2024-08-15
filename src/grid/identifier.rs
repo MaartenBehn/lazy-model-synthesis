@@ -1,19 +1,18 @@
-use octa_force::glam::{IVec2, ivec2};
-use crate::grid::grid::{ChunkIndex, Grid, NodeIndex, ValueData};
-use crate::node::Node;
-use crate::node_identifier::{FastIdentifier, GeneralIdentifier, IdentifierConverter, PackedIdentifier};
+use octa_force::glam::{IVec2};
+use crate::grid::grid::Grid;
+use crate::identifier::{FastIdentifier, GeneralIdentifier, IdentifierConverter, PackedIdentifier};
 
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct GlobalPos(pub IVec2);
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct ChunkNodeIndex {
     pub chunk_index: usize,
     pub node_index: usize,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct PackedChunkNodeIndex(pub u32);
 impl GeneralIdentifier for GlobalPos {
 

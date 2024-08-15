@@ -2,12 +2,11 @@
 
 use std::iter::repeat_with;
 use octa_force::glam::IVec2;
-use crate::grid::dispatcher::{RandomDispatcher, VecDispatcher};
+use crate::dispatcher::vec_dispatcher::VecDispatcher;
 use crate::grid::identifier::{ChunkNodeIndex, GlobalPos, PackedChunkNodeIndex};
-use crate::grid::node_render_data::NodeRenderData;
 use crate::grid::rules::{NeighborReq, NUM_VALUES, Rule, ValueType};
+use crate::grid::visulation::node_render_data::NodeRenderData;
 use crate::node::Node;
-use crate::node_identifier::{FastIdentifier, GeneralIdentifier};
 use crate::node_storage::NodeStorage;
 use crate::util::get_num_bits_for_number;
 use crate::util::state_saver::State;
@@ -25,7 +24,7 @@ pub struct Grid {
     
     pub chunks: Vec<Chunk>,
     pub rules: Vec<Rule>,
-    pub dispatcher: VecDispatcher,
+    pub dispatcher: VecDispatcher<ChunkNodeIndex>,
     // pub dispatcher: RandomDispatcher,
 }
 
@@ -79,7 +78,7 @@ impl NodeStorage<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex> for Grid {
     type Req = NeighborReq;
     type ShuffleSeed = usize;
 
-    fn get_dispatcher(&mut self) -> &mut VecDispatcher { &mut self.dispatcher }
+    fn get_dispatcher(&mut self) -> &mut VecDispatcher<ChunkNodeIndex> { &mut self.dispatcher }
     
     fn get_mut_node_from_fast_lookup(&mut self, fast_lookup: ChunkNodeIndex) -> &mut Node<ValueData> {
         &mut self.chunks[fast_lookup.chunk_index].nodes[fast_lookup.node_index]

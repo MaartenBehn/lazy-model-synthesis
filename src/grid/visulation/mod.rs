@@ -1,12 +1,11 @@
 use crate::util::state_saver::TickType;
-use std::fmt::format;
 use std::time::Duration;
 use num_enum::TryFromPrimitive;
 use octa_force::gui::Gui;
 use octa_force::anyhow::*;
 use octa_force::{BaseApp, egui, glam};
-use octa_force::egui::{Align, FontId, Frame, Id, Layout, Pos2, RichText, TextStyle, Ui, Widget};
-use octa_force::egui::FontFamily::{Proportional};
+use octa_force::egui::{Align, FontId, Frame, Id, Layout, Pos2, Ui, Widget};
+use octa_force::egui::FontFamily::Proportional;
 use octa_force::egui::panel::Side;
 use octa_force::egui::TextStyle::{Body, Button, Heading, Monospace, Small};
 use octa_force::egui_winit::winit::event::WindowEvent;
@@ -14,14 +13,18 @@ use octa_force::glam::{IVec2, vec2, Vec2};
 use octa_force::vulkan::ash::vk::AttachmentLoadOp;
 use crate::grid::grid::{Grid, ValueData};
 use crate::grid::identifier::GlobalPos;
-use crate::grid::node_render_data::NUM_VALUE_TYPES;
-use crate::grid::renderer::GridRenderer;
+use node_render_data::NUM_VALUE_TYPES;
 use crate::grid::rules::{get_example_rules, NUM_VALUES, ValueType};
-use crate::grid::selector::Selector;
+use crate::grid::visulation::renderer::GridRenderer;
+use crate::grid::visulation::selector::Selector;
 use crate::history::History;
 use crate::LazyModelSynthesis;
 use crate::node_storage::NodeStorage;
 use crate::util::state_saver::StateSaver;
+
+pub mod node_render_data;
+pub mod renderer;
+pub mod selector;
 
 pub struct GridVisulation {
     pub gui: Gui,
@@ -74,7 +77,7 @@ impl GridVisulation {
         &mut self,
         base: &mut BaseApp<LazyModelSynthesis>,
         frame_index: usize,
-        delta_time: Duration,
+        _delta_time: Duration,
     ) -> Result<()> {
         if self.run {
             self.state_saver.set_next_tick(TickType::ForwardSave);
@@ -174,14 +177,13 @@ impl GridVisulation {
                         
                     });
 
-                    /*
+                    
                     div(ui, |ui| {
                         if ui.button("clear").clicked() {
                             self.run = false;
-                            self.grid_debugger.reset()
+                            self.state_saver.reset()
                         }
                     });
-                     */
 
                     ui.separator();
 
@@ -230,12 +232,7 @@ impl GridVisulation {
                         });
                     }
                 });
-
-
-
-                ui.with_layout(Layout::bottom_up(Align::LEFT), |ui| {
-
-                });
+                
             });
 
             egui::CentralPanel::default().show(ctx, |ui| {

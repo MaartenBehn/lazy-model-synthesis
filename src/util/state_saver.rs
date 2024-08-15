@@ -1,4 +1,3 @@
-use crate::history::History;
 
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum TickType {

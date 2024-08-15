@@ -1,4 +1,4 @@
-use crate::node_identifier::PackedIdentifier;
+use crate::identifier::PackedIdentifier;
 use crate::util::get_num_bits_for_number;
 
 #[derive(Clone)]

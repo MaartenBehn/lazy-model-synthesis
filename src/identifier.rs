@@ -1,11 +1,3 @@
-use octa_force::glam::IVec2;
-
-pub enum IdentifierType {
-    General,
-    Fast,
-    PackedI
-}
-
 
 /// A general identifier of the node.
 /// For example Vec2 for 2D grid.
