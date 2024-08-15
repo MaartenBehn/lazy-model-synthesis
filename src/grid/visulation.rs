@@ -1,3 +1,4 @@
+use crate::util::state_saver::TickType;
 use std::fmt::format;
 use std::time::Duration;
 use num_enum::TryFromPrimitive;
@@ -12,18 +13,22 @@ use octa_force::egui_winit::winit::event::WindowEvent;
 use octa_force::glam::{IVec2, vec2, Vec2};
 use octa_force::vulkan::ash::vk::AttachmentLoadOp;
 use crate::grid::grid::{Grid, ValueData};
-use crate::grid::grid_debugger::{GridDebugger, TickType};
+use crate::grid::identifier::GlobalPos;
 use crate::grid::node_render_data::NUM_VALUE_TYPES;
 use crate::grid::renderer::GridRenderer;
-use crate::grid::rules::{get_example_rules, ValueType};
+use crate::grid::rules::{get_example_rules, NUM_VALUES, ValueType};
 use crate::grid::selector::Selector;
+use crate::history::History;
 use crate::LazyModelSynthesis;
 use crate::node_storage::NodeStorage;
+use crate::util::state_saver::StateSaver;
 
 pub struct GridVisulation {
     pub gui: Gui,
 
-    pub grid_debugger: GridDebugger,
+
+    pub state_saver: StateSaver<Grid>,
+
     pub grid_renderer: GridRenderer,
     pub selector: Selector,
 
@@ -38,7 +43,10 @@ impl GridVisulation {
         let mut grid = Grid::new();
         grid.add_chunk(IVec2::ZERO);
         grid.rules = get_example_rules();
-        grid.add_initial_value(IVec2::new(0, 0), ValueData::new(ValueType::Stone));
+        grid.add_initial_value(GlobalPos(IVec2::new(0, 0)), ValueData::new(ValueType::Stone));
+
+        let history = History::new(grid.clone(), NUM_VALUES);
+        let state_saver = StateSaver::from_state(grid, 100);
 
         let mut gui = Gui::new(
             &base.context,
@@ -48,12 +56,11 @@ impl GridVisulation {
             base.num_frames
         )?;
 
-        let grid_debugger = GridDebugger::from_grid(grid, 100);
         let grid_renderer = GridRenderer::new(&mut base.context, &mut gui.renderer, base.num_frames, 1)?;
         let selector = Selector::new();
 
         Ok(GridVisulation {
-            grid_debugger,
+            state_saver,
             gui,
             grid_renderer,
             selector,
@@ -70,22 +77,22 @@ impl GridVisulation {
         delta_time: Duration,
     ) -> Result<()> {
         if self.run {
-            self.grid_debugger.next_tick = TickType::ForwardSave;
+            self.state_saver.set_next_tick(TickType::ForwardSave);
             for _ in 0..self.run_ticks_per_frame {
-                self.grid_debugger.tick();
+                self.state_saver.tick();
             }
         } else {
-            self.grid_debugger.tick();
+            self.state_saver.tick();
         }
-        self.grid_debugger.next_tick = TickType::None;
+        self.state_saver.set_next_tick(TickType::None);
         
         
-        self.selector.add_to_render_data(self.pointer_pos_in_grid, &mut self.grid_debugger);
+        self.selector.add_to_render_data(self.pointer_pos_in_grid, self.state_saver.get_state_mut());
 
-        self.grid_renderer.set_chunk_data(0, &self.grid_debugger.get_grid().chunks[0].render_data);
+        self.grid_renderer.set_chunk_data(0, &self.state_saver.get_state().chunks[0].render_data);
         self.grid_renderer.update(&mut base.context, base.swapchain.format, frame_index);
 
-        self.selector.clear_from_render_data(&mut self.grid_debugger);
+        self.selector.clear_from_render_data(self.state_saver.get_state_mut());
         
         Ok(())
     }
@@ -130,17 +137,18 @@ impl GridVisulation {
                         ui.heading("Simulation");
                     });
 
+
                     div(ui, |ui| {
                         ui.label("Tick: ");
 
                         if ui.button("<<<").clicked() {
                             self.run = false;
-                            self.grid_debugger.next_tick = TickType::Back;
+                            self.state_saver.set_next_tick(TickType::Back);
                         }
 
                         if ui.button(">>>").clicked() {
                             self.run = false;
-                            self.grid_debugger.next_tick = TickType::ForwardSave;
+                            self.state_saver.set_next_tick(TickType::ForwardSave);
                         }
                     });
 
@@ -149,7 +157,7 @@ impl GridVisulation {
                     });
 
                     div(ui, |ui| {
-                        let (current_saved, num_saved) = self.grid_debugger.get_step_state();
+                        let (current_saved, num_saved) = self.state_saver.get_step_state();
                         egui::ProgressBar::new(1.0 - (current_saved as f32 / num_saved as f32)).ui(ui);
                     });
 
@@ -165,13 +173,15 @@ impl GridVisulation {
                         );
                         
                     });
-                    
+
+                    /*
                     div(ui, |ui| {
                         if ui.button("clear").clicked() {
                             self.run = false;
                             self.grid_debugger.reset()
                         }
                     });
+                     */
 
                     ui.separator();
 
@@ -179,19 +189,17 @@ impl GridVisulation {
                         ui.heading("Selected Node");
                     });
 
-                    if let Some((pos, grid_index)) = self.selector.last_selected {
+                    if let Some(pos) = self.selector.last_selected {
                         div(ui, |ui| {
                             ui.label(format!("Pos: [{:0>2} {:0>2}]", pos.x, pos.y));
                         });
+
+                        let chunk_node_index = self.state_saver.get_state_mut()
+                            .get_chunk_and_node_index_from_global_pos(GlobalPos(pos));
                         
-                        let (chunk_index, node_index) = self.grid_debugger
-                            .grids[grid_index]
-                            .get_chunk_and_node_index_from_global_pos(pos);
-                        
-                        let data = self.grid_debugger
-                            .grids[grid_index]
-                            .chunks[chunk_index]
-                            .render_data[node_index];
+                        let data = self.state_saver.get_state()
+                            .chunks[chunk_node_index.chunk_index]
+                            .render_data[chunk_node_index.node_index];
                         
                         for value_index in 0..NUM_VALUE_TYPES {
                             let value_type = ValueType::try_from_primitive(value_index).unwrap();
@@ -212,6 +220,8 @@ impl GridVisulation {
                                         if reset_queue {"R"} else {"   "},
                                     ));
                             });
+
+
                         }
                         
                     } else {

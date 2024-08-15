@@ -1,16 +1,28 @@
+use std::iter;
 use crate::value::{Value};
 
 pub type ValueIndex = usize;
 const VALUE_INDEX_NONE: ValueIndex = ValueIndex::MAX;
 const VALUE_INDEX_MAX: ValueIndex = ValueIndex::MAX - 1;
+pub type HistoryIndex = u16;
 
 #[derive(Clone)]
 pub struct Node<D> {
     pub values: Vec<Value<D>>,
-    selected_index: ValueIndex
+    pub selected_index: ValueIndex,
+
+    pub last_removed: Vec<HistoryIndex>,
 }
 
 impl<D> Node<D> {
+    
+    pub fn new(num_values: usize) -> Self {
+        Node {
+            last_removed: iter::repeat(0).take(num_values).collect(),
+            values: vec![],
+            selected_index: 0,
+        }
+    }
     pub fn add_value<>(&mut self, value_data: D) -> ValueIndex {
         self.values.push(Value::new(value_data));
         self.values.len() - 1
@@ -41,15 +53,6 @@ impl<D> Node<D> {
         self.selected_index = VALUE_INDEX_NONE;
         self.values[index].unselect_callback();
 
-    }
-}
-
-impl<D> Default for Node<D> {
-    fn default() -> Self {
-        Node {
-            values: vec![],
-            selected_index: VALUE_INDEX_NONE,
-        }
     }
 }
 

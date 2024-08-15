@@ -1,5 +1,4 @@
-use crate::grid::grid::Grid;
-use crate::node_storage::NodeStorage;
+use crate::history::History;
 
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum TickType {
@@ -9,21 +8,24 @@ pub enum TickType {
     ForwardSave,
 }
 
+pub struct StateSaver<S> {
+    start_state: S,
+    states: Vec<S>,
+    current: usize,
+    length: usize,
 
-pub struct GridDebugger{
-    pub start_grid: Grid,
-    pub grids: Vec<Grid>,
-    pub current: usize,
-    pub length: usize,
-
-    pub next_tick: TickType,
+    next_tick: TickType,
 }
 
-impl GridDebugger {
-    pub fn from_grid(grid: Grid, num_saved: usize) -> Self {
-        GridDebugger{
-            start_grid: grid.clone(),
-            grids: vec![grid],
+pub trait State: Clone {
+    fn tick_state(&mut self);
+}
+
+impl<S: State> StateSaver<S> {
+    pub fn from_state(history: S, num_saved: usize) -> Self {
+        StateSaver {
+            start_state: history.clone(),
+            states: vec![history],
             current: 0,
             length: num_saved,
             next_tick: TickType::None,
@@ -42,14 +44,14 @@ impl GridDebugger {
     fn tick_forward(&mut self, save_tick: bool) {
         if self.current == 0 {
             if !save_tick {
-                self.grids[0].tick();
+                self.states[0].tick_state();
                 return;
             }
 
-            let mut new_grid = self.grids[0].clone();
-            new_grid.tick();
-            self.grids.insert(0, new_grid);
-            self.grids.truncate(self.length);
+            let mut new_grid = self.states[0].clone();
+            new_grid.tick_state();
+            self.states.insert(0, new_grid);
+            self.states.truncate(self.length);
             return;
         }
 
@@ -57,19 +59,19 @@ impl GridDebugger {
     }
 
     fn tick_back(&mut self) {
-        if self.current >= self.grids.len() - 1 {
+        if self.current >= self.states.len() - 1 {
             return;
         }
 
         self.current += 1;
     }
 
-    pub fn get_grid(&self) -> &Grid {
-        &self.grids[self.current]
+    pub fn get_state(&self) -> &S {
+        &self.states[self.current]
     }
 
-    pub fn get_grid_mut(&mut self) -> &mut Grid {
-        &mut self.grids[self.current]
+    pub fn get_state_mut(&mut self) -> &mut S {
+        &mut self.states[self.current]
     }
 
     pub fn get_step_state(&self) -> (usize, usize) {
@@ -77,7 +79,11 @@ impl GridDebugger {
     }
 
     pub fn reset(&mut self) {
-        self.grids = vec![self.start_grid.clone()];
+        self.states = vec![self.start_state.clone()];
         self.current = 0;
+    }
+    
+    pub fn set_next_tick(&mut self, next_tick: TickType) {
+        self.next_tick = next_tick;
     }
 }

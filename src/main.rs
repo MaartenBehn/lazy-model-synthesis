@@ -10,6 +10,9 @@ mod value;
 mod node_storage;
 mod grid;
 mod dispatcher;
+mod history;
+mod node_identifier;
+mod util;
 
 const WIDTH: u32 = 1280; // 2200;
 const HEIGHT: u32 = 720; // 1250;

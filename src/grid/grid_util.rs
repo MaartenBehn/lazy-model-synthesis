@@ -1,5 +1,6 @@
 use octa_force::glam::{IVec2, ivec2};
 use crate::grid::grid::{ChunkIndex, Grid, NodeIndex, ValueData};
+use crate::grid::identifier::{ChunkNodeIndex, GlobalPos};
 use crate::node::Node;
 
 pub fn mod_ivec2(v: IVec2, t: IVec2) -> IVec2 {
@@ -8,12 +9,12 @@ pub fn mod_ivec2(v: IVec2, t: IVec2) -> IVec2 {
 
 impl Grid {
 
-    pub fn get_chunk_pos_from_global_pos(&self, pos: IVec2) -> IVec2 {
-        pos / self.chunk_size
+    pub fn get_chunk_pos_from_global_pos(&self, pos: GlobalPos) -> IVec2 {
+        pos.0 / self.chunk_size
     }
 
-    pub fn get_in_chunk_pos_from_global_pos(&self, pos: IVec2) -> IVec2 {
-        mod_ivec2(pos, self.chunk_size)
+    pub fn get_in_chunk_pos_from_global_pos(&self, pos: GlobalPos) -> IVec2 {
+        mod_ivec2(pos.0, self.chunk_size)
     }
 
     pub fn get_node_index_from_pos_in_chunk(&self, pos: IVec2) -> NodeIndex {
@@ -33,21 +34,21 @@ impl Grid {
         })
     }
 
-    pub fn get_chunk_and_node_index_from_global_pos(&mut self, pos: IVec2) -> (ChunkIndex, NodeIndex){
+    pub fn get_chunk_and_node_index_from_global_pos(&mut self, pos: GlobalPos) -> ChunkNodeIndex{
         let in_chunk_pos = self.get_in_chunk_pos_from_global_pos(pos);
         let node_index = self.get_node_index_from_pos_in_chunk(in_chunk_pos);
 
         let chunk_pos = self.get_chunk_pos_from_global_pos(pos);
         let chunk_index = self.get_chunk_index_from_chunk_pos(chunk_pos);
 
-        (chunk_index, node_index)
+        ChunkNodeIndex { chunk_index, node_index }
     }
 
-    pub fn get_global_pos_from_chunk_and_node_index(&mut self, chunk_index: ChunkIndex, node_index: NodeIndex) -> IVec2 {
-        let chunk_pos = self.chunks[chunk_index].pos;
-        let node_pos = self.get_pos_in_chunk_from_node_index(node_index);
+    pub fn get_global_pos_from_chunk_and_node_index(&mut self, chunk_node_index: ChunkNodeIndex) -> GlobalPos {
+        let chunk_pos = self.chunks[chunk_node_index.chunk_index].pos;
+        let node_pos = self.get_pos_in_chunk_from_node_index(chunk_node_index.node_index);
 
-        chunk_pos + node_pos
+        GlobalPos(chunk_pos + node_pos)
     }
 
 
