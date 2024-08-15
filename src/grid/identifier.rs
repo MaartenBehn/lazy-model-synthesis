@@ -1,6 +1,6 @@
 use octa_force::glam::{IVec2};
 use crate::grid::grid::Grid;
-use crate::identifier::{FastIdentifier, GeneralIdentifier, IdentifierConverter, PackedIdentifier};
+use crate::identifier::{FastIdentifierT, GeneralIdentifierT, IdentifierConverter, PackedIdentifierT};
 
 
 #[derive(Copy, Clone, Default)]
@@ -14,15 +14,15 @@ pub struct ChunkNodeIndex {
 
 #[derive(Copy, Clone, Default)]
 pub struct PackedChunkNodeIndex(pub u32);
-impl GeneralIdentifier for GlobalPos {
+impl GeneralIdentifierT for GlobalPos {
 
 }
 
-impl FastIdentifier for ChunkNodeIndex {
+impl FastIdentifierT for ChunkNodeIndex {
 
 }
 
-impl PackedIdentifier for PackedChunkNodeIndex {
+impl PackedIdentifierT for PackedChunkNodeIndex {
     fn to_bits(self) -> u32 { self.0 }
 
     fn from_bits(bits: u32) -> Self {

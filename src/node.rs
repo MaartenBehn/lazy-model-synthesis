@@ -23,7 +23,7 @@ impl<D> Node<D> {
             selected_index: 0,
         }
     }
-    pub fn add_value<>(&mut self, value_data: D) -> ValueIndex {
+    pub fn add_value(&mut self, value_data: D) -> ValueIndex {
         self.values.push(Value::new(value_data));
         self.values.len() - 1
     }

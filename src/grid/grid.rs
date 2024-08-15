@@ -10,12 +10,14 @@ use crate::node::Node;
 use crate::node_storage::NodeStorage;
 use crate::util::get_num_bits_for_number;
 use crate::util::state_saver::State;
+use crate::value::ValueDataT;
 
 pub type ChunkIndex = usize;
 pub type NodeIndex = usize;
 pub const CHUNK_SIZE: usize = 32;
 
 #[derive(Clone)]
+#[derive(Default)]
 pub struct Grid {
     pub chunk_size: IVec2,
     pub nodes_per_chunk: usize,
@@ -24,8 +26,6 @@ pub struct Grid {
     
     pub chunks: Vec<Chunk>,
     pub rules: Vec<Rule>,
-    pub dispatcher: VecDispatcher<ChunkNodeIndex>,
-    // pub dispatcher: RandomDispatcher,
 }
 
 #[derive(Clone)]
@@ -35,7 +35,7 @@ pub struct Chunk {
     pub render_data: Vec<NodeRenderData>
 }
 
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct ValueData {
     value_type: ValueType,
 }
@@ -54,8 +54,6 @@ impl Grid {
             mask_for_node_per_chunk,
             chunks: vec![],
             rules: vec![],
-            dispatcher: VecDispatcher::default(), 
-            // dispatcher: RandomDispatcher::default(),
         }
     }
 
@@ -72,13 +70,10 @@ impl Grid {
     }
 }
 
-impl NodeStorage<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex> for Grid {
-
-    type ValueData = ValueData;
+impl NodeStorage<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex, ValueData> for Grid {
+    
     type Req = NeighborReq;
     type ShuffleSeed = usize;
-
-    fn get_dispatcher(&mut self) -> &mut VecDispatcher<ChunkNodeIndex> { &mut self.dispatcher }
     
     fn get_mut_node_from_fast_lookup(&mut self, fast_lookup: ChunkNodeIndex) -> &mut Node<ValueData> {
         &mut self.chunks[fast_lookup.chunk_index].nodes[fast_lookup.node_index]
@@ -96,11 +91,11 @@ impl NodeStorage<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex> for Grid {
         node_pos.0.x >= 0 && node_pos.0.y >= 0 && node_pos.0.x < self.chunk_size.x && node_pos.0.y < self.chunk_size.y
     }
 
-    fn value_data_matches_req(value_data: &Self::ValueData, req: &Self::Req) -> bool {
+    fn value_data_matches_req(value_data: &ValueData, req: &Self::Req) -> bool {
         value_data.value_type == req.req_type
     }
 
-    fn get_value_data_for_req(req: Self::Req) -> Self::ValueData {
+    fn get_value_data_for_req(req: Self::Req) -> ValueData {
         ValueData::new(req.req_type)
     }
 
@@ -128,12 +123,9 @@ impl ValueData {
     }
 }
 
-impl State for Grid {
-    fn tick_state(&mut self) {
-        self.tick();
-    }
+impl ValueDataT for ValueData {
+    
 }
-
 
 #[cfg(test)]
 mod tests {

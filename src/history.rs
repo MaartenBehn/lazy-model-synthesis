@@ -1,7 +1,7 @@
-use crate::identifier::PackedIdentifier;
+use crate::identifier::PackedIdentifierT;
 use crate::util::get_num_bits_for_number;
 
-#[derive(Clone)]
+#[derive(Default, Clone)]
 pub struct History<NodeStorage> {
     pub num_values: usize,
     pub num_values_bits: usize,
@@ -34,7 +34,7 @@ impl<NodeStorage> History<NodeStorage> {
         todo!()
     }
 
-    pub fn add_change<I: PackedIdentifier>(&mut self, packed_identifier: I, value_index: usize) {
+    pub fn add_change<I: PackedIdentifierT>(&mut self, packed_identifier: I, value_index: usize) {
         let identifier_bits = packed_identifier.to_bits();
         
         {
@@ -57,7 +57,7 @@ impl<NodeStorage> History<NodeStorage> {
         &self.summaries[self.nodes[index] as usize]
     }
 
-    pub fn get_change<I: PackedIdentifier>(&self, index: usize) -> (I, usize) {
+    pub fn get_change<I: PackedIdentifierT>(&self, index: usize) -> (I, usize) {
         let data = self.nodes[index] & !(1 << 31);
         let identifier_bits = data >> self.num_values_bits;
         let value_index = (data & self.num_values_mask) as usize;

@@ -3,9 +3,10 @@ use octa_force::glam::IVec2;
 
 pub const NUM_VALUES: usize = 3;
 
-#[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, IntoPrimitive, TryFromPrimitive, Debug)]
+#[derive(Default, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, IntoPrimitive, TryFromPrimitive, Debug)]
 #[repr(u32)]
 pub enum ValueType {
+    #[default]
     Stone = 0,
     Grass,
     Sand,

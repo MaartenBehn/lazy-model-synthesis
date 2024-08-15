@@ -12,8 +12,8 @@ enum ReqOperation {
 }
 
 #[derive(Clone)]
-pub struct Value<D> {
-    pub value_data: D,
+pub struct Value<VD> {
+    pub value_data: VD,
     reqs: Vec<Rc<RefCell<ValueReq>>>,
     required_by: Vec<Rc<RefCell<ValueReq>>>,
 }
@@ -24,8 +24,12 @@ pub struct ValueReq {
     operation: ReqOperation,
 }
 
-impl<D> Value<D> {
-    pub fn new(user_data: D) -> Self {
+pub trait ValueDataT: Copy + Default {
+    
+}
+
+impl<VD> Value<VD> {
+    pub fn new(user_data: VD) -> Self {
         Value {
             value_data: user_data,
             reqs: vec![],

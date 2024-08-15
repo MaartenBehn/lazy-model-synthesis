@@ -13,6 +13,7 @@ mod dispatcher;
 mod history;
 mod identifier;
 mod util;
+mod node_manager;
 
 const WIDTH: u32 = 1280; // 2200;
 const HEIGHT: u32 = 720; // 1250;

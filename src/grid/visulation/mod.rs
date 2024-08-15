@@ -12,13 +12,16 @@ use octa_force::egui_winit::winit::event::WindowEvent;
 use octa_force::glam::{IVec2, vec2, Vec2};
 use octa_force::vulkan::ash::vk::AttachmentLoadOp;
 use crate::grid::grid::{Grid, ValueData};
-use crate::grid::identifier::GlobalPos;
+use crate::grid::identifier::{ChunkNodeIndex, GlobalPos, PackedChunkNodeIndex};
 use node_render_data::NUM_VALUE_TYPES;
+use crate::dispatcher::vec_dispatcher::VecDispatcher;
 use crate::grid::rules::{get_example_rules, NUM_VALUES, ValueType};
 use crate::grid::visulation::renderer::GridRenderer;
 use crate::grid::visulation::selector::Selector;
 use crate::history::History;
+use crate::identifier::FastIdentifierT;
 use crate::LazyModelSynthesis;
+use crate::node_manager::NodeManager;
 use crate::node_storage::NodeStorage;
 use crate::util::state_saver::StateSaver;
 
@@ -28,9 +31,17 @@ pub mod selector;
 
 pub struct GridVisulation {
     pub gui: Gui,
-
-
-    pub state_saver: StateSaver<Grid>,
+    
+    pub state_saver: StateSaver<
+        NodeManager<
+            Grid, 
+            VecDispatcher<ChunkNodeIndex>, 
+            GlobalPos, 
+            ChunkNodeIndex, 
+            PackedChunkNodeIndex, 
+            ValueData
+        >
+    >,
 
     pub grid_renderer: GridRenderer,
     pub selector: Selector,
@@ -46,10 +57,11 @@ impl GridVisulation {
         let mut grid = Grid::new();
         grid.add_chunk(IVec2::ZERO);
         grid.rules = get_example_rules();
-        grid.add_initial_value(GlobalPos(IVec2::new(0, 0)), ValueData::new(ValueType::Stone));
 
-        let history = History::new(grid.clone(), NUM_VALUES);
-        let state_saver = StateSaver::from_state(grid, 100);
+        let mut node_manager = NodeManager::new(grid.clone(), NUM_VALUES);
+        node_manager.add_initial_value(GlobalPos(IVec2::new(0, 0)), ValueData::new(ValueType::Stone));
+        
+        let state_saver = StateSaver::from_state(node_manager, 100);
 
         let mut gui = Gui::new(
             &base.context,
@@ -90,12 +102,12 @@ impl GridVisulation {
         self.state_saver.set_next_tick(TickType::None);
         
         
-        self.selector.add_to_render_data(self.pointer_pos_in_grid, self.state_saver.get_state_mut());
+        self.selector.add_to_render_data(self.pointer_pos_in_grid, self.state_saver.get_state_mut().get_current_mut());
 
-        self.grid_renderer.set_chunk_data(0, &self.state_saver.get_state().chunks[0].render_data);
+        self.grid_renderer.set_chunk_data(0, &self.state_saver.get_state().get_current().chunks[0].render_data);
         self.grid_renderer.update(&mut base.context, base.swapchain.format, frame_index);
 
-        self.selector.clear_from_render_data(self.state_saver.get_state_mut());
+        self.selector.clear_from_render_data(self.state_saver.get_state_mut().get_current_mut());
         
         Ok(())
     }
@@ -196,10 +208,10 @@ impl GridVisulation {
                             ui.label(format!("Pos: [{:0>2} {:0>2}]", pos.x, pos.y));
                         });
 
-                        let chunk_node_index = self.state_saver.get_state_mut()
+                        let chunk_node_index = self.state_saver.get_state_mut().get_current_mut()
                             .get_chunk_and_node_index_from_global_pos(GlobalPos(pos));
                         
-                        let data = self.state_saver.get_state()
+                        let data = self.state_saver.get_state().get_current()
                             .chunks[chunk_node_index.chunk_index]
                             .render_data[chunk_node_index.node_index];
                         
