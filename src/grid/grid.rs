@@ -92,11 +92,13 @@ impl NodeStorage<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex, ValueData> for
     }
 
     fn value_data_matches_req(value_data: &ValueData, req: &Self::Req) -> bool {
-        value_data.value_type == req.req_type
+        req.req_types.iter().find(|t| {
+            value_data.value_type == **t
+        }).is_some()
     }
 
-    fn get_value_data_for_req(req: Self::Req) -> ValueData {
-        ValueData::new(req.req_type)
+    fn get_possible_value_data_for_req(req: Self::Req) -> Vec<ValueData> {
+        req.req_types.to_owned().into_iter().map(|t| {ValueData::new(t)}).collect()
     }
 
     // For Debugging
@@ -124,7 +126,7 @@ impl NodeStorage<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex, ValueData> for
         self.chunks[fast.chunk_index].render_data[fast.node_index].set_add_queue(value_data.value_type, false);
     }
 
-    fn on_push_propagate_queue_callback(&mut self, fast: ChunkNodeIndex, value_data: ValueData) {
+    fn on_push_remove_queue_callback(&mut self, fast: ChunkNodeIndex, value_data: ValueData) {
         self.chunks[fast.chunk_index].render_data[fast.node_index].set_propagate_queue(value_data.value_type,true);
     }
 

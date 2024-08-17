@@ -3,16 +3,16 @@ use crate::grid::grid::Grid;
 use crate::identifier::{FastIdentifierT, GeneralIdentifierT, IdentifierConverterT, PackedIdentifierT};
 
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, Debug)]
 pub struct GlobalPos(pub IVec2);
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, Debug)]
 pub struct ChunkNodeIndex {
     pub chunk_index: usize,
     pub node_index: usize,
 }
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, Debug)]
 pub struct PackedChunkNodeIndex(pub u32);
 
 impl GeneralIdentifierT for GlobalPos {

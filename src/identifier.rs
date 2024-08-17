@@ -1,20 +1,19 @@
-use crate::util::get_num_bits_for_number;
-use crate::value::ValueNr;
+use std::fmt::Debug;
 
 /// A general identifier of the node.
 /// For example Vec2 for 2D grid.
-pub trait GeneralIdentifierT: Copy + Default {
+pub trait GeneralIdentifierT: Copy + Default + Debug {
     
 }
 
 /// An identifier for fast node access 
 /// For example (ChunkIndex, NodeIndex) for 2D Grid
-pub trait FastIdentifierT: Copy + Default {
+pub trait FastIdentifierT: Copy + Default + Debug {
     
 }
 
 /// An identifier that is packed to be stored in history
-pub trait PackedIdentifierT: Copy + Default {
+pub trait PackedIdentifierT: Copy + Default + Debug {
     fn to_bits(self) -> u32;
     fn from_bits(bits: u32) -> Self;
 }

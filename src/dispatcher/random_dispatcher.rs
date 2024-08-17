@@ -7,8 +7,8 @@ use crate::value::ValueNr;
 pub struct RandomDispatcher<FI> {
     rng: Rng,
     add: Vec<(FI, ValueNr)>,
-    propagate: Vec<(FI, ValueNr)>,
-    reset: Vec<(FI, ValueNr)>,
+    remove: Vec<(FI, ValueNr)>,
+    select: Vec<(FI, ValueNr)>,
 }
 
 impl<FI: FastIdentifierT> RandomDispatcher<FI> {
@@ -36,18 +36,18 @@ impl<FI: FastIdentifierT> Dispatcher<FI> for RandomDispatcher<FI> {
     }
 
     fn push_remove(&mut self, fast_identifier: FI, value_nr: ValueNr) {
-        Self::push(&mut self.propagate, fast_identifier, value_nr)
+        Self::push(&mut self.remove, fast_identifier, value_nr)
     }
 
     fn pop_remove(&mut self) -> Option<(FI, ValueNr)> {
-        Self::pop(&mut self.propagate, &mut self.rng)
+        Self::pop(&mut self.remove, &mut self.rng)
     }
 
     fn push_select(&mut self, fast_identifier: FI, value_nr: ValueNr) {
-        Self::push(&mut self.reset, fast_identifier, value_nr)
+        Self::push(&mut self.select, fast_identifier, value_nr)
     }
 
     fn pop_select(&mut self) -> Option<(FI, ValueNr)> {
-        Self::pop(&mut self.reset, &mut self.rng)
+        Self::pop(&mut self.select, &mut self.rng)
     }
 }

@@ -6,7 +6,7 @@ use crate::value::ValueDataT;
 pub trait NodeStorage<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: PackedIdentifierT, VD: ValueDataT>: 
     IdentifierConverterT<GI, FI, PI> + Default + Clone
 {
-    type Req: Copy;
+    type Req: Clone;
     type ShuffleSeed: Copy;
     
     fn get_mut_node(&mut self, fast_lookup: FI) -> &mut Node<VD>;
@@ -19,7 +19,7 @@ pub trait NodeStorage<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: PackedIde
 
     fn value_data_matches_req(value_data: &VD, req: &Self::Req) -> bool;
 
-    fn get_value_data_for_req(req: Self::Req) -> VD;
+    fn get_possible_value_data_for_req(req: Self::Req) -> Vec<VD>;
 
 
     // Callbacks for debug rendering
@@ -30,7 +30,7 @@ pub trait NodeStorage<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: PackedIde
 
     fn on_push_add_queue_callback(&mut self, fast: FI, value_data: VD);
     fn on_pop_add_queue_callback(&mut self, fast: FI, value_data: VD);
-    fn on_push_propagate_queue_callback(&mut self, fast: FI, value_data: VD);
+    fn on_push_remove_queue_callback(&mut self, fast: FI, value_data: VD);
     fn on_pop_remove_queue_callback(&mut self, fast: FI, value_data: VD);
     fn on_push_select_queue_callback(&mut self, fast: FI, value_data: VD);
     fn on_pop_select_queue_callback(&mut self, fast: FI, value_data: VD);

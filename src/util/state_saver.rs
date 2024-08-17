@@ -1,3 +1,4 @@
+use octa_force::puffin_egui::puffin;
 
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum TickType {
@@ -32,6 +33,8 @@ impl<S: State> StateSaver<S> {
     }
 
     pub fn tick(&mut self) {
+        puffin::profile_function!();
+        
         match self.next_tick {
             TickType::None => {}
             TickType::Back => {self.tick_back()}
@@ -41,13 +44,21 @@ impl<S: State> StateSaver<S> {
     }
 
     fn tick_forward(&mut self, save_tick: bool) {
+        puffin::profile_function!();
+        
         if self.current == 0 {
-            let mut new_state = self.states[0].clone();
+            let mut new_state;
+            {
+                puffin::profile_scope!("Clone state");
+                new_state = self.states[0].clone();
+            }
+            
             let changed = new_state.tick_state();
             
             if !changed || !save_tick {
                 self.states[0] = new_state;
             } else {
+                puffin::profile_scope!("Update state list");
                 self.states.insert(0, new_state);
                 self.states.truncate(self.length);
             }

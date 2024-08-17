@@ -1,4 +1,6 @@
 use std::marker::PhantomData;
+use octa_force::log::{debug, info};
+use octa_force::puffin_egui::puffin;
 use crate::dispatcher::Dispatcher;
 use crate::history::History;
 use crate::identifier::{FastIdentifierT, GeneralIdentifierT, IdentifierConverterT, PackedIdentifierT};
@@ -8,6 +10,8 @@ use crate::util::state_saver::State;
 use crate::value::{ValueDataT, ValueNr};
 use crate::value::req::ValueReq;
 use crate::value::req_by::{ValueReqByPacker};
+
+const DEBUG_LOG: bool = true;
 
 #[derive(Default, Clone)]
 pub struct NodeManager<N, D, GI, FI, PI, VD>
@@ -71,6 +75,8 @@ impl<N, D, GI, FI, PI, VD> NodeManager<N, D, GI, FI, PI, VD>
     }
 
     fn tick(&mut self) -> bool {
+        puffin::profile_function!();
+        
         if let Some((fast_identifier, value_nr)) = self.dispatcher.pop_add() {
             
             self.add_tick(fast_identifier, value_nr);
@@ -91,10 +97,15 @@ impl<N, D, GI, FI, PI, VD> NodeManager<N, D, GI, FI, PI, VD>
     }
 
     fn add_tick(&mut self, fast_identifier: FI, value_nr: ValueNr) {
+        puffin::profile_function!();
         
         // Get the other identifier of the node the value was added.
         let identifier = self.current.genera_from_fast(fast_identifier);
         let packed_identifier = self.current.packed_from_fast(fast_identifier);
+        
+        if DEBUG_LOG {
+            info!("ADD: {:?}", identifier);
+        }
         
         // Get the value_data and value nr of the value that was added
         let node = self.current.get_mut_node(fast_identifier);
@@ -121,71 +132,60 @@ impl<N, D, GI, FI, PI, VD> NodeManager<N, D, GI, FI, PI, VD>
             let node = self.current.get_mut_node(fast_identifier);
             let req_index = node.values[value_index].add_value_req(ValueReq::new_node_value_counter());
             
-            // Call to mark that one other value will reference this req
-            node.values[value_index].on_add_req_by(req_index);
-            
-            // Get the req node 
             let req_fast_identifier = self.current.fast_from_general(req_identifier);
-            let req_node = self.current.get_mut_node(req_fast_identifier);
             
-            // Get the value data from requirement and add it to the neighbor node
-            let req_value_data = N::get_value_data_for_req(req);
-            let req_value_nr = req_value_data.get_value_nr();
+            let possible_value_data = N::get_possible_value_data_for_req(req);
+            for req_value_data in possible_value_data {
+                let req_value_nr = req_value_data.get_value_nr();
 
-            // Check if the node contains the value that is required.
-            let req_value_index = req_node.get_value_index_from_value_nr(req_value_nr);
-            
-            if req_value_index.is_err() {
-                // The required value needs to be added
-                
-                let req_value_index = req_value_index.err().unwrap();
-                req_node.add_value_with_index(req_value_index, req_value_data);
-                
-                // Reference the added node by adding a req by 
-                // A req by is a packed node identifier, value nr and req index
-                let req_req_by = self.req_by_packer.pack(packed_identifier, value_nr, req_index);
-                req_node.values[req_value_index].add_req_by(req_req_by);
-                
-                // This neighbor node go a new value so push it to be processed
-                self.dispatcher.push_add(req_fast_identifier, req_value_nr);
+                // Check if the node contains the value that is required.
+                let req_node = self.current.get_mut_node(req_fast_identifier);
+                let req_value_index = req_node.get_value_index_from_value_nr(req_value_nr);
 
-                {   // For debugging
-                    self.current.on_add_value_callback(req_fast_identifier, req_value_data);
-                    self.current.on_push_add_queue_callback(req_fast_identifier, req_value_data);
+                if req_value_index.is_err() {
+                    // The required value needs to be added
+
+                    let req_value_index = req_value_index.err().unwrap();
+                    req_node.add_value_with_index(req_value_index, req_value_data);
+
+                    // Reference the added node by adding a req by 
+                    // A req by is a packed node identifier, value nr and req index
+                    let req_req_by = self.req_by_packer.pack(packed_identifier, value_nr, req_index);
+                    req_node.values[req_value_index].add_req_by(req_req_by);
+
+                    // Call to mark that one other value will reference this req
+                    let node = self.current.get_mut_node(fast_identifier);
+                    node.values[value_index].on_add_req_by(req_index);
+
+                    // This neighbor node go a new value so push it to be processed
+                    self.dispatcher.push_add(req_fast_identifier, req_value_nr);
+
+                    {   // For debugging
+                        self.current.on_add_value_callback(req_fast_identifier, req_value_data);
+                        self.current.on_push_add_queue_callback(req_fast_identifier, req_value_data);
+                    }
+
+                } else {
+                    // The neighbor node already had the value so just add the req by
+                    let req_req_by = self.req_by_packer.pack(packed_identifier, value_nr, req_index);
+                    req_node.values[req_value_index.unwrap()].add_req_by(req_req_by);
+
+                    // Call to mark that one other value will reference this req
+                    let node = self.current.get_mut_node(fast_identifier);
+                    node.values[value_index].on_add_req_by(req_index);
                 }
-                
-            } else {
-                // The neighbor node already had the value so just add the req by
-                let req_req_by = self.req_by_packer.pack(packed_identifier, value_nr, req_index);
-                req_node.values[req_value_index.unwrap()].add_req_by(req_req_by);
             }
         }
     }
     
-    fn select_tick(&mut self, fast_identifier: FI, value_nr: ValueNr) {
-        
-        // Get the node of the value that is selected
-        let node = self.current.get_mut_node(fast_identifier);
-        let value_index = node.get_value_index_from_value_nr(value_nr).unwrap();
-        
-        // Swap the selected value into first place 
-        // All other values will be later removed
-        node.values.swap(0, value_index);
-        
-        // Go over alle values that are not selected and will be removed
-        for i in (1..node.values.len()).rev() {
-            let other_value_nr = node.values[i].value_data.get_value_nr();
-            self.dispatcher.push_remove(fast_identifier, other_value_nr)
-        }
-        
-        {   // For debugging
-            let value_data = node.values[0].value_data;
-            self.current.on_pop_select_queue_callback(fast_identifier, value_data);
-            self.current.on_select_value_callback(fast_identifier, value_data);
-        }
-    }
-
     fn remove_tick(&mut self, fast_identifier: FI, value_nr: ValueNr) {
+        puffin::profile_function!();
+
+        if DEBUG_LOG {
+            let identifier = self.current.genera_from_fast(fast_identifier);
+            info!("Remove: {:?}", identifier);
+        }
+        
         
         // Get the value and value data of the value that will be removed
         let node = self.current.get_mut_node(fast_identifier);
@@ -221,7 +221,12 @@ impl<N, D, GI, FI, PI, VD> NodeManager<N, D, GI, FI, PI, VD>
             // Check if the value that requires this value should be removed
             let req_should_be_removed = req_node.values[req_value_index].reqs[req_index].on_remove_req_by();
             if req_should_be_removed {
-                self.dispatcher.push_remove(req_fast_identifier, req_value_nr)
+                self.dispatcher.push_remove(req_fast_identifier, req_value_nr);
+
+                {   // For debugging
+                    let req_value_data = req_node.values[req_value_index].value_data;
+                    self.current.on_push_remove_queue_callback(req_fast_identifier, req_value_data);
+                }
             }
         }
 
@@ -242,10 +247,90 @@ impl<N, D, GI, FI, PI, VD> NodeManager<N, D, GI, FI, PI, VD>
             self.current.on_remove_value_callback(fast_identifier, value_data);
         }
     }
-    
-    
-    
-    
+
+    fn select_tick(&mut self, fast_identifier: FI, value_nr: ValueNr) {
+        puffin::profile_function!();
+
+        if DEBUG_LOG {
+            let identifier = self.current.genera_from_fast(fast_identifier);
+            info!("Select: {:?}", identifier);
+        }
+
+        {   // For debugging
+            let node = self.current.get_mut_node(fast_identifier);
+            let value_index = node.get_value_index_from_value_nr(value_nr);
+            if value_index.is_ok() {
+                let value_data = node.values[value_index.unwrap()].value_data;
+                self.current.on_pop_select_queue_callback(fast_identifier, value_data);
+            }
+        }
+        
+        // Get the node of the value that is selected
+        let node = self.current.get_mut_node(fast_identifier);
+        
+        if node.selected {
+            return;
+        }
+        
+        
+        let value_index = node.get_value_index_from_value_nr(value_nr);
+        if value_index.is_err() {
+            return;
+        }
+        let value_index = value_index.unwrap();
+        
+        let req_by_len = node.values[value_index].req_by.len();
+
+        // Swap the selected value into first place 
+        // All other values will be later removed
+        node.values.swap(0, value_index);
+
+        // Go over all values that are not selected and will be removed
+        for i in (1..node.values.len()).rev() {
+            let other_value_nr = node.values[i].value_data.get_value_nr();
+            self.dispatcher.push_remove(fast_identifier, other_value_nr)
+        }
+
+        for i in 0..req_by_len {
+            // Get the req by
+            let node = self.current.get_mut_node(fast_identifier);
+            let req_by = node.values[value_index].req_by[i];
+
+            // Identify the req that is linked to this value
+            let (req_packed_identifier, req_value_nr, _) = self.req_by_packer.unpack::<PI>(req_by);
+            let req_fast_identifier = self.current.fast_from_packed(req_packed_identifier);
+            
+            let req_node = self.current.get_mut_node(req_fast_identifier);
+            if req_node.selected {
+                continue;
+            }
+            
+            self.dispatcher.push_select(req_fast_identifier, req_value_nr);
+
+            {
+                let req_value_index = req_node.get_value_index_from_value_nr(req_value_nr);
+                if req_value_index.is_err() {
+                    continue
+                }
+                
+                let req_value_data = req_node.values[req_value_index.unwrap()].value_data;
+                self.current.on_push_select_queue_callback(req_fast_identifier, req_value_data);
+            }
+        }
+
+        let node = self.current.get_mut_node(fast_identifier);
+        node.selected = true;
+
+        {   // For debugging
+            let node = self.current.get_mut_node(fast_identifier);
+            let value_index = node.get_value_index_from_value_nr(value_nr);
+            if value_index.is_ok() {
+                let value_data = node.values[value_index.unwrap()].value_data;
+                self.current.on_select_value_callback(fast_identifier, value_data);
+            }
+        }
+        
+    }
 }
 
 impl<N, D, GI, FI, PI, VD> State for NodeManager<N, D, GI, FI, PI, VD>

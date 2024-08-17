@@ -14,15 +14,13 @@ use octa_force::vulkan::ash::vk::AttachmentLoadOp;
 use crate::grid::grid::{Grid, ValueData};
 use crate::grid::identifier::{ChunkNodeIndex, GlobalPos, PackedChunkNodeIndex};
 use node_render_data::NUM_VALUE_TYPES;
+use crate::dispatcher::random_dispatcher::RandomDispatcher;
 use crate::dispatcher::vec_dispatcher::VecDispatcher;
 use crate::grid::rules::{get_example_rules, NUM_REQS, NUM_VALUES, ValueType};
 use crate::grid::visulation::renderer::GridRenderer;
 use crate::grid::visulation::selector::Selector;
-use crate::history::History;
-use crate::identifier::FastIdentifierT;
 use crate::LazyModelSynthesis;
 use crate::node_manager::NodeManager;
-use crate::node_storage::NodeStorage;
 use crate::util::state_saver::StateSaver;
 
 pub mod node_render_data;
@@ -35,7 +33,7 @@ pub struct GridVisulation {
     pub state_saver: StateSaver<
         NodeManager<
             Grid, 
-            VecDispatcher<ChunkNodeIndex>, 
+            RandomDispatcher<ChunkNodeIndex>, 
             GlobalPos, 
             ChunkNodeIndex, 
             PackedChunkNodeIndex, 

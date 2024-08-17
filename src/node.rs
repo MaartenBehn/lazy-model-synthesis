@@ -9,8 +9,8 @@ pub type HistoryIndex = u16;
 #[derive(Clone)]
 pub struct Node<D: ValueDataT> {
     pub values: Vec<Value<D>>,
-
     pub last_removed: Vec<HistoryIndex>,
+    pub selected: bool,
 }
 
 impl<D: ValueDataT> Node<D> {
@@ -19,6 +19,7 @@ impl<D: ValueDataT> Node<D> {
         Node {
             last_removed: iter::repeat(0).take(num_values).collect(),
             values: vec![],
+            selected: false,
         }
     }
     
