@@ -14,7 +14,7 @@ vec4 rgb(uint r, uint g, uint b) {
 #define ADDED_OFFSET 0
 #define ADD_OFFSET 1
 #define PROPERGATE_OFFSET 2
-#define RESET_OFFSET 3
+#define SELECT_OFFSET 3
 
 #define STONE_INDEX 0
 #define GRASS_INDEX 1
@@ -22,7 +22,7 @@ vec4 rgb(uint r, uint g, uint b) {
 
 #define ADD_COLOR rgb(0, 53, 218)
 #define PROPERGATE_COLOR rgb(133, 23, 152)
-#define RESET_COLOR rgb(57, 150, 221)
+#define SELECT_COLOR rgb(57, 150, 221)
 
 #define STONE_COLOR rgb(88, 90, 94)
 #define GRASS_COLOR rgb(0, 128, 0)
@@ -111,16 +111,16 @@ vec4 debug_color(uint data, vec2 v, vec4 color) {
   }
 
 
-  if (value_bit_set(data, STONE_INDEX, RESET_OFFSET) && in_inner_rect(v, vec2(0.0, RECT_SIZE * 2), vec2(RECT_SIZE, RECT_SIZE * 3))) {
-    return RESET_COLOR;
+  if (value_bit_set(data, STONE_INDEX, SELECT_OFFSET) && in_inner_rect(v, vec2(0.0, RECT_SIZE * 2), vec2(RECT_SIZE, RECT_SIZE * 3))) {
+    return SELECT_COLOR;
   }
 
-  if (value_bit_set(data, GRASS_INDEX, RESET_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE, RECT_SIZE * 2), vec2(RECT_SIZE * 2, RECT_SIZE * 3))) {
-    return RESET_COLOR;
+  if (value_bit_set(data, GRASS_INDEX, SELECT_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE, RECT_SIZE * 2), vec2(RECT_SIZE * 2, RECT_SIZE * 3))) {
+    return SELECT_COLOR;
   }
 
-  if (value_bit_set(data, SAND_INDEX, RESET_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE * 2, RECT_SIZE * 2), vec2(RECT_SIZE * 3, RECT_SIZE * 3))) {
-    return RESET_COLOR;
+  if (value_bit_set(data, SAND_INDEX, SELECT_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE * 2, RECT_SIZE * 2), vec2(RECT_SIZE * 3, RECT_SIZE * 3))) {
+    return SELECT_COLOR;
   }
 
 

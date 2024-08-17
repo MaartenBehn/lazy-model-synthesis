@@ -1,22 +1,22 @@
 use fastrand::Rng;
 use crate::dispatcher::Dispatcher;
 use crate::identifier::FastIdentifierT;
-use crate::node::ValueIndex;
+use crate::value::ValueNr;
 
 #[derive(Default, Clone)]
 pub struct RandomDispatcher<FI> {
     rng: Rng,
-    add: Vec<(FI, ValueIndex)>,
-    propagate: Vec<(FI, ValueIndex)>,
-    reset: Vec<(FI, ValueIndex)>,
+    add: Vec<(FI, ValueNr)>,
+    propagate: Vec<(FI, ValueNr)>,
+    reset: Vec<(FI, ValueNr)>,
 }
 
 impl<FI: FastIdentifierT> RandomDispatcher<FI> {
-    fn push(list: &mut Vec<(FI, ValueIndex)>, fast_identifier: FI, value_index: ValueIndex) {
-        list.push((fast_identifier, value_index))
+    fn push(list: &mut Vec<(FI, ValueNr)>, fast_identifier: FI, value_nr: ValueNr) {
+        list.push((fast_identifier, value_nr))
     }
 
-    fn pop(list: &mut Vec<(FI, ValueIndex)>, rng: &mut Rng) -> Option<(FI, ValueIndex)> {
+    fn pop(list: &mut Vec<(FI, ValueNr)>, rng: &mut Rng) -> Option<(FI, ValueNr)> {
         if list.is_empty() {
             return None
         }
@@ -27,27 +27,27 @@ impl<FI: FastIdentifierT> RandomDispatcher<FI> {
 }
 
 impl<FI: FastIdentifierT> Dispatcher<FI> for RandomDispatcher<FI> {
-    fn push_add(&mut self, fast_identifier: FI, value_index: ValueIndex) {
-        Self::push(&mut self.add, fast_identifier, value_index)
+    fn push_add(&mut self, fast_identifier: FI, value_nr: ValueNr) {
+        Self::push(&mut self.add, fast_identifier, value_nr)
     }
 
-    fn pop_add(&mut self) -> Option<(FI, ValueIndex)> {
+    fn pop_add(&mut self) -> Option<(FI, ValueNr)> {
         Self::pop(&mut self.add, &mut self.rng)
     }
 
-    fn push_propagate(&mut self, fast_identifier: FI, value_index: ValueIndex) {
-        Self::push(&mut self.propagate, fast_identifier, value_index)
+    fn push_remove(&mut self, fast_identifier: FI, value_nr: ValueNr) {
+        Self::push(&mut self.propagate, fast_identifier, value_nr)
     }
 
-    fn pop_propagate(&mut self) -> Option<(FI, ValueIndex)> {
+    fn pop_remove(&mut self) -> Option<(FI, ValueNr)> {
         Self::pop(&mut self.propagate, &mut self.rng)
     }
 
-    fn push_reset(&mut self, fast_identifier: FI, value_index: ValueIndex) {
-        Self::push(&mut self.reset, fast_identifier, value_index)
+    fn push_select(&mut self, fast_identifier: FI, value_nr: ValueNr) {
+        Self::push(&mut self.reset, fast_identifier, value_nr)
     }
 
-    fn pop_reset(&mut self) -> Option<(FI, ValueIndex)> {
+    fn pop_select(&mut self) -> Option<(FI, ValueNr)> {
         Self::pop(&mut self.reset, &mut self.rng)
     }
 }

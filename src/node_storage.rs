@@ -1,20 +1,15 @@
-use crate::dispatcher::Dispatcher;
-use crate::node::{Node, ValueIndex};
-use crate::identifier::{FastIdentifierT, GeneralIdentifierT, IdentifierConverter, PackedIdentifierT};
-use crate::value::ValueReq;
 
-pub trait NodeStorage<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: PackedIdentifierT, VD: Copy>: 
-    IdentifierConverter<GI, FI, PI> + Default + Clone
+use crate::node::{Node};
+use crate::identifier::{FastIdentifierT, GeneralIdentifierT, IdentifierConverterT, PackedIdentifierT};
+use crate::value::ValueDataT;
+
+pub trait NodeStorage<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: PackedIdentifierT, VD: ValueDataT>: 
+    IdentifierConverterT<GI, FI, PI> + Default + Clone
 {
     type Req: Copy;
     type ShuffleSeed: Copy;
     
-    fn get_mut_node(&mut self, identifier: GI) -> &mut Node<VD> {
-        let fast_lookup = self.fast_from_general(identifier);
-        self.get_mut_node_from_fast_lookup(fast_lookup)
-    }
-
-    fn get_mut_node_from_fast_lookup(&mut self, fast_lookup: FI) -> &mut Node<VD>;
+    fn get_mut_node(&mut self, fast_lookup: FI) -> &mut Node<VD>;
 
     fn get_reqs_for_value_data(&mut self, value_data: &VD) -> Vec<Self::Req>;
 
@@ -30,7 +25,13 @@ pub trait NodeStorage<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: PackedIde
     // Callbacks for debug rendering
     fn on_add_value_callback(&mut self, fast: FI, value_data: VD);
     fn on_remove_value_callback(&mut self, fast: FI, value_data: VD);
+    fn on_select_value_callback(&mut self, fast: FI, value_data: VD);
+    fn on_unselect_value_callback(&mut self, fast: FI, value_data: VD);
 
     fn on_push_add_queue_callback(&mut self, fast: FI, value_data: VD);
     fn on_pop_add_queue_callback(&mut self, fast: FI, value_data: VD);
+    fn on_push_propagate_queue_callback(&mut self, fast: FI, value_data: VD);
+    fn on_pop_remove_queue_callback(&mut self, fast: FI, value_data: VD);
+    fn on_push_select_queue_callback(&mut self, fast: FI, value_data: VD);
+    fn on_pop_select_queue_callback(&mut self, fast: FI, value_data: VD);
 }

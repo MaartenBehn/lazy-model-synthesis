@@ -1,20 +1,20 @@
 pub mod vec_dispatcher;
 pub mod random_dispatcher;
 
-use crate::node::ValueIndex;
+use crate::value::ValueNr;
 
 pub trait Dispatcher<FastIdentifier>: Default + Clone {
-    fn push_add(&mut self, fast_identifier: FastIdentifier, value_index: ValueIndex);
+    fn push_add(&mut self, fast_identifier: FastIdentifier, value_index: ValueNr);
 
-    fn pop_add(&mut self) -> Option<(FastIdentifier, ValueIndex)>;
+    fn pop_add(&mut self) -> Option<(FastIdentifier, ValueNr)>;
 
-    fn push_propagate(&mut self, fast_identifier: FastIdentifier, value_index: ValueIndex);
+    fn push_remove(&mut self, fast_identifier: FastIdentifier, value_index: ValueNr);
 
-    fn pop_propagate(&mut self) -> Option<(FastIdentifier, ValueIndex)>;
+    fn pop_remove(&mut self) -> Option<(FastIdentifier, ValueNr)>;
 
-    fn push_reset(&mut self, fast_identifier: FastIdentifier, value_index: ValueIndex);
+    fn push_select(&mut self, fast_identifier: FastIdentifier, value_index: ValueNr);
 
-    fn pop_reset(&mut self) -> Option<(FastIdentifier, ValueIndex)>;
+    fn pop_select(&mut self) -> Option<(FastIdentifier, ValueNr)>;
 }
 
 

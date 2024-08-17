@@ -15,7 +15,7 @@ use crate::grid::grid::{Grid, ValueData};
 use crate::grid::identifier::{ChunkNodeIndex, GlobalPos, PackedChunkNodeIndex};
 use node_render_data::NUM_VALUE_TYPES;
 use crate::dispatcher::vec_dispatcher::VecDispatcher;
-use crate::grid::rules::{get_example_rules, NUM_VALUES, ValueType};
+use crate::grid::rules::{get_example_rules, NUM_REQS, NUM_VALUES, ValueType};
 use crate::grid::visulation::renderer::GridRenderer;
 use crate::grid::visulation::selector::Selector;
 use crate::history::History;
@@ -58,8 +58,8 @@ impl GridVisulation {
         grid.add_chunk(IVec2::ZERO);
         grid.rules = get_example_rules();
 
-        let mut node_manager = NodeManager::new(grid.clone(), NUM_VALUES);
-        node_manager.add_initial_value(GlobalPos(IVec2::new(0, 0)), ValueData::new(ValueType::Stone));
+        let mut node_manager = NodeManager::new(grid.clone(), NUM_VALUES, NUM_REQS);
+        node_manager.select_initial_value(GlobalPos(IVec2::new(0, 0)), ValueData::new(ValueType::Stone));
         
         let state_saver = StateSaver::from_state(node_manager, 100);
 
@@ -221,7 +221,7 @@ impl GridVisulation {
                             let added = data.get_value_type(value_type);
                             let add_queue = data.get_add_queue(value_type);
                             let propergate_queue = data.get_propagate_queue(value_type);
-                            let reset_queue = data.get_reset_queue(value_type);
+                            let reset_queue = data.get_select_queue(value_type);
                             
                             div(ui, |ui| {
                                 ui.label(

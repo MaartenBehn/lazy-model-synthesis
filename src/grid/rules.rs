@@ -2,6 +2,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use octa_force::glam::IVec2;
 
 pub const NUM_VALUES: usize = 3;
+pub const NUM_REQS: usize = 8;
 
 #[derive(Default, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, IntoPrimitive, TryFromPrimitive, Debug)]
 #[repr(u32)]

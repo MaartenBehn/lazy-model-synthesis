@@ -6,8 +6,8 @@ const BITS_PER_VALUE: usize = 4;
 
 const ADDED_OFFSET: usize = 0;
 const ADD_QUEUE_OFFSET: usize = 1;
-const PROPERGATE_QUEUE_OFFSET: usize = 2;
-const RESET_QUEUE_OFFSET: usize = 2;
+const PROPAGATE_QUEUE_OFFSET: usize = 2;
+const SELECT_QUEUE_OFFSET: usize = 2;
 
 const MAX_SELECTED_BITS: usize = 4;
 const MAX_VALUE_TYPE_INDEX: usize = 2_usize.pow(MAX_SELECTED_BITS as u32);
@@ -48,11 +48,11 @@ impl NodeRenderData {
     pub fn get_add_queue(&self, value_type: ValueType) -> bool { self.get_value_bit(value_type, ADD_QUEUE_OFFSET) }
     pub fn set_add_queue(&mut self, value_type: ValueType, v: bool) { self.set_value_bit(value_type, ADD_QUEUE_OFFSET, v) }
 
-    pub fn get_propagate_queue(&self, value_type: ValueType) -> bool { self.get_value_bit(value_type, PROPERGATE_QUEUE_OFFSET) }
-    pub fn set_propagate_queue(&mut self, value_type: ValueType, v: bool) { self.set_value_bit(value_type, PROPERGATE_QUEUE_OFFSET, v) }
+    pub fn get_propagate_queue(&self, value_type: ValueType) -> bool { self.get_value_bit(value_type, PROPAGATE_QUEUE_OFFSET) }
+    pub fn set_propagate_queue(&mut self, value_type: ValueType, v: bool) { self.set_value_bit(value_type, PROPAGATE_QUEUE_OFFSET, v) }
 
-    pub fn get_reset_queue(&self, value_type: ValueType) -> bool { self.get_value_bit(value_type, RESET_QUEUE_OFFSET) }
-    pub fn set_reset_queue(&mut self, value_type: ValueType, v: bool) { self.set_value_bit(value_type, RESET_QUEUE_OFFSET, v) }
+    pub fn get_select_queue(&self, value_type: ValueType) -> bool { self.get_value_bit(value_type, SELECT_QUEUE_OFFSET) }
+    pub fn set_select_queue(&mut self, value_type: ValueType, v: bool) { self.set_value_bit(value_type, SELECT_QUEUE_OFFSET, v) }
 
     pub fn get_selected_value_type(&self) -> ValueType {
         ValueType::try_from(self.data & (MAX_VALUE_TYPE_INDEX - 1) as u32 - 1).unwrap()
@@ -60,6 +60,10 @@ impl NodeRenderData {
 
     pub fn set_selected_value_type(&mut self, value_type: ValueType)  {
         self.data = value_type as u32 + 1 + (self.data & !(MAX_VALUE_TYPE_INDEX - 1) as u32);
+    }
+
+    pub fn unselected_value_type(&mut self)  {
+        self.data = self.data & !(MAX_VALUE_TYPE_INDEX - 1) as u32;
     }
 
 }

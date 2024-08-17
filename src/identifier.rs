@@ -1,3 +1,5 @@
+use crate::util::get_num_bits_for_number;
+use crate::value::ValueNr;
 
 /// A general identifier of the node.
 /// For example Vec2 for 2D grid.
@@ -18,7 +20,7 @@ pub trait PackedIdentifierT: Copy + Default {
 }
 
 
-pub trait IdentifierConverter<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: PackedIdentifierT> {
+pub trait IdentifierConverterT<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: PackedIdentifierT> {
     fn fast_from_general(&mut self, i: GI) -> FI;
     fn genera_from_fast(&mut self, i: FI) -> GI;
 
@@ -28,4 +30,8 @@ pub trait IdentifierConverter<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: P
     fn packed_from_fast(&mut self, i: FI) -> PI;
     fn fast_from_packed(&mut self, i: PI) -> FI;
 }
+
+
+
+
 

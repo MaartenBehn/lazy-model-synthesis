@@ -1,6 +1,6 @@
 use octa_force::glam::{IVec2};
 use crate::grid::grid::Grid;
-use crate::identifier::{FastIdentifierT, GeneralIdentifierT, IdentifierConverter, PackedIdentifierT};
+use crate::identifier::{FastIdentifierT, GeneralIdentifierT, IdentifierConverterT, PackedIdentifierT};
 
 
 #[derive(Copy, Clone, Default)]
@@ -14,6 +14,7 @@ pub struct ChunkNodeIndex {
 
 #[derive(Copy, Clone, Default)]
 pub struct PackedChunkNodeIndex(pub u32);
+
 impl GeneralIdentifierT for GlobalPos {
 
 }
@@ -31,7 +32,7 @@ impl PackedIdentifierT for PackedChunkNodeIndex {
 }
 
 
-impl IdentifierConverter<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex> for Grid {
+impl IdentifierConverterT<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex> for Grid {
     fn fast_from_general(&mut self, i: GlobalPos) -> ChunkNodeIndex {
         self.get_chunk_and_node_index_from_global_pos(i)
     }
@@ -51,7 +52,7 @@ impl IdentifierConverter<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex> for Gr
     }
 
     fn packed_from_fast(&mut self, i: ChunkNodeIndex) -> PackedChunkNodeIndex {
-        PackedChunkNodeIndex((i.chunk_index << self.bits_for_nodes_per_chunk + i.node_index) as u32)
+        PackedChunkNodeIndex(((i.chunk_index << self.bits_for_nodes_per_chunk) + i.node_index) as u32)
     }
 
     fn fast_from_packed(&mut self, i: PackedChunkNodeIndex) -> ChunkNodeIndex {

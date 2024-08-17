@@ -17,7 +17,7 @@ pub struct StateSaver<S> {
 }
 
 pub trait State: Clone {
-    fn tick_state(&mut self);
+    fn tick_state(&mut self) -> bool;
 }
 
 impl<S: State> StateSaver<S> {
@@ -42,15 +42,16 @@ impl<S: State> StateSaver<S> {
 
     fn tick_forward(&mut self, save_tick: bool) {
         if self.current == 0 {
-            if !save_tick {
-                self.states[0].tick_state();
-                return;
+            let mut new_state = self.states[0].clone();
+            let changed = new_state.tick_state();
+            
+            if !changed || !save_tick {
+                self.states[0] = new_state;
+            } else {
+                self.states.insert(0, new_state);
+                self.states.truncate(self.length);
             }
-
-            let mut new_grid = self.states[0].clone();
-            new_grid.tick_state();
-            self.states.insert(0, new_grid);
-            self.states.truncate(self.length);
+            
             return;
         }
 

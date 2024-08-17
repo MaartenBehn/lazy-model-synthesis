@@ -21,7 +21,7 @@ pub const CHUNK_SIZE: usize = 32;
 pub struct Grid {
     pub chunk_size: IVec2,
     pub nodes_per_chunk: usize,
-    pub bits_for_nodes_per_chunk: usize,
+    pub bits_for_nodes_per_chunk: u32,
     pub mask_for_node_per_chunk: u32,
     
     pub chunks: Vec<Chunk>,
@@ -75,7 +75,7 @@ impl NodeStorage<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex, ValueData> for
     type Req = NeighborReq;
     type ShuffleSeed = usize;
     
-    fn get_mut_node_from_fast_lookup(&mut self, fast_lookup: ChunkNodeIndex) -> &mut Node<ValueData> {
+    fn get_mut_node(&mut self, fast_lookup: ChunkNodeIndex) -> &mut Node<ValueData> {
         &mut self.chunks[fast_lookup.chunk_index].nodes[fast_lookup.node_index]
     }
 
@@ -100,20 +100,44 @@ impl NodeStorage<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex, ValueData> for
     }
 
     // For Debugging
-    fn on_add_value_callback(&mut self, fast_node_lookup: ChunkNodeIndex, value_data: ValueData) {
-        self.chunks[fast_node_lookup.chunk_index].render_data[fast_node_lookup.node_index].set_value_type(value_data.value_type, true);
+    fn on_add_value_callback(&mut self, fast: ChunkNodeIndex, value_data: ValueData) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_value_type(value_data.value_type, true);
     }
 
-    fn on_remove_value_callback(&mut self, fast_node_lookup: ChunkNodeIndex, value_data: ValueData) {
-        self.chunks[fast_node_lookup.chunk_index].render_data[fast_node_lookup.node_index].set_value_type(value_data.value_type, false);
+    fn on_remove_value_callback(&mut self, fast: ChunkNodeIndex, value_data: ValueData) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_value_type(value_data.value_type, false);
     }
 
-    fn on_push_add_queue_callback(&mut self, fast_node_lookup: ChunkNodeIndex, value_data: ValueData) {
-        self.chunks[fast_node_lookup.chunk_index].render_data[fast_node_lookup.node_index].set_add_queue(value_data.value_type,true);
+    fn on_select_value_callback(&mut self, fast: ChunkNodeIndex, value_data: ValueData) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_selected_value_type(value_data.value_type);
     }
 
-    fn on_pop_add_queue_callback(&mut self, fast_node_lookup: ChunkNodeIndex, value_data: ValueData) {
-        self.chunks[fast_node_lookup.chunk_index].render_data[fast_node_lookup.node_index].set_add_queue(value_data.value_type, false);
+    fn on_unselect_value_callback(&mut self, fast: ChunkNodeIndex, _: ValueData) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].unselected_value_type();
+    }
+
+    fn on_push_add_queue_callback(&mut self, fast: ChunkNodeIndex, value_data: ValueData) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_add_queue(value_data.value_type,true);
+    }
+
+    fn on_pop_add_queue_callback(&mut self, fast: ChunkNodeIndex, value_data: ValueData) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_add_queue(value_data.value_type, false);
+    }
+
+    fn on_push_propagate_queue_callback(&mut self, fast: ChunkNodeIndex, value_data: ValueData) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_propagate_queue(value_data.value_type,true);
+    }
+
+    fn on_pop_remove_queue_callback(&mut self, fast: ChunkNodeIndex, value_data: ValueData) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_propagate_queue(value_data.value_type,false);
+    }
+
+    fn on_push_select_queue_callback(&mut self, fast: ChunkNodeIndex, value_data: ValueData) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_select_queue(value_data.value_type, true);
+    }
+
+    fn on_pop_select_queue_callback(&mut self, fast: ChunkNodeIndex, value_data: ValueData) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_select_queue(value_data.value_type, false);
     }
 }
 
@@ -124,23 +148,7 @@ impl ValueData {
 }
 
 impl ValueDataT for ValueData {
-    
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::grid::rules::get_example_rules;
-    use super::*;
-
-    #[test]
-    fn example_grid() {
-        let mut grid = Grid::new();
-        grid.add_chunk(IVec2::ZERO);
-        grid.rules = get_example_rules();
-        grid.add_initial_value(IVec2::new(1, 1), ValueData::new(ValueType::Stone));
-
-        while grid.tick_state() {}
-
-        println!("Done")
+    fn get_value_nr(&self) -> crate::value::ValueNr {
+        self.value_type.into()
     }
 }
