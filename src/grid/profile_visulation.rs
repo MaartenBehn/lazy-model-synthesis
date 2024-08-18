@@ -56,7 +56,7 @@ impl GridProfileVisulation {
             gui,
             grid_renderer,
             run: false,
-            run_ticks_per_frame: 20000,
+            run_ticks_per_frame: 50000,
         })
     }
 
