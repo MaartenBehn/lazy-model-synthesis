@@ -8,7 +8,7 @@ pub struct RandomDispatcher<FI> {
     rng: Rng,
     add: Vec<(FI, ValueNr)>,
     remove: Vec<(FI, ValueNr)>,
-    select: Vec<(FI, ValueNr)>,
+    select: Vec<FI>,
 }
 
 impl<FI: FastIdentifierT> RandomDispatcher<FI> {
@@ -43,11 +43,22 @@ impl<FI: FastIdentifierT> Dispatcher<FI> for RandomDispatcher<FI> {
         Self::pop(&mut self.remove, &mut self.rng)
     }
 
-    fn push_select(&mut self, fast_identifier: FI, value_nr: ValueNr) {
-        Self::push(&mut self.select, fast_identifier, value_nr)
+    fn push_select(&mut self, fast_identifier: FI) {
+        self.select.push(fast_identifier)
     }
 
-    fn pop_select(&mut self) -> Option<(FI, ValueNr)> {
-        Self::pop(&mut self.select, &mut self.rng)
+    fn pop_select(&mut self) -> Option<FI> {
+        if self.select.is_empty() {
+            return None
+        }
+
+        let index = self.rng.usize(0..self.select.len());
+        Some(self.select.swap_remove(index))
+    }
+
+    fn select_contains_node(&mut self, fast_identifier: FI) -> bool {
+        self.select.iter().find(|i| {
+            **i == fast_identifier
+        }).is_some()
     }
 }

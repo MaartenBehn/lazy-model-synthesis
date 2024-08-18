@@ -13,31 +13,30 @@ use octa_force::glam::{IVec2, vec2, Vec2};
 use octa_force::vulkan::ash::vk::AttachmentLoadOp;
 use crate::grid::grid::{Grid, ValueData};
 use crate::grid::identifier::{ChunkNodeIndex, GlobalPos, PackedChunkNodeIndex};
-use node_render_data::NUM_VALUE_TYPES;
 use crate::dispatcher::random_dispatcher::RandomDispatcher;
-use crate::dispatcher::vec_dispatcher::VecDispatcher;
+use crate::grid::render::node_render_data::NUM_VALUE_TYPES;
+use crate::grid::render::renderer::GridRenderer;
+use crate::grid::render::selector::Selector;
 use crate::grid::rules::{get_example_rules, NUM_REQS, NUM_VALUES, ValueType};
-use crate::grid::visulation::renderer::GridRenderer;
-use crate::grid::visulation::selector::Selector;
 use crate::LazyModelSynthesis;
 use crate::node_manager::NodeManager;
 use crate::util::state_saver::StateSaver;
+use crate::value::ValueNr;
 
-pub mod node_render_data;
-pub mod renderer;
-pub mod selector;
+const CHUNK_SIZE: usize = 32;
 
-pub struct GridVisulation {
+pub struct GridDebugVisulation {
     pub gui: Gui,
     
     pub state_saver: StateSaver<
         NodeManager<
             Grid, 
-            RandomDispatcher<ChunkNodeIndex>, 
+            RandomDispatcher<ChunkNodeIndex>,
             GlobalPos, 
             ChunkNodeIndex, 
             PackedChunkNodeIndex, 
-            ValueData
+            ValueData,
+            true,
         >
     >,
 
@@ -49,10 +48,10 @@ pub struct GridVisulation {
     pointer_pos_in_grid: Option<Vec2>
 }
 
-impl GridVisulation {
+impl GridDebugVisulation {
     pub fn new(base: &mut BaseApp<LazyModelSynthesis>) -> Result<Self> {
 
-        let mut grid = Grid::new();
+        let mut grid = Grid::new(CHUNK_SIZE);
         grid.add_chunk(IVec2::ZERO);
         grid.rules = get_example_rules();
 
@@ -69,10 +68,10 @@ impl GridVisulation {
             base.num_frames
         )?;
 
-        let grid_renderer = GridRenderer::new(&mut base.context, &mut gui.renderer, base.num_frames, 1)?;
+        let grid_renderer = GridRenderer::new(&mut base.context, &mut gui.renderer, base.num_frames, CHUNK_SIZE, 1)?;
         let selector = Selector::new();
 
-        Ok(GridVisulation {
+        Ok(GridDebugVisulation {
             state_saver,
             gui,
             grid_renderer,
@@ -102,7 +101,7 @@ impl GridVisulation {
         
         self.selector.add_to_render_data(self.pointer_pos_in_grid, self.state_saver.get_state_mut().get_current_mut());
 
-        self.grid_renderer.set_chunk_data(0, &self.state_saver.get_state().get_current().chunks[0].render_data);
+        self.grid_renderer.set_chunk_data(0, CHUNK_SIZE, &self.state_saver.get_state().get_current().chunks[0].render_data);
         self.grid_renderer.update(&mut base.context, base.swapchain.format, frame_index);
 
         self.selector.clear_from_render_data(self.state_saver.get_state_mut().get_current_mut());
@@ -147,7 +146,7 @@ impl GridVisulation {
             egui::SidePanel::new(Side::Left, Id::new("Side Panel")).show(ctx, |ui| {
                 ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
                     div(ui, |ui| {
-                        ui.heading("Simulation");
+                        ui.heading("Grid (Debug Mode)");
                     });
 
 
@@ -213,23 +212,23 @@ impl GridVisulation {
                             .chunks[chunk_node_index.chunk_index]
                             .render_data[chunk_node_index.node_index];
                         
-                        for value_index in 0..NUM_VALUE_TYPES {
-                            let value_type = ValueType::try_from_primitive(value_index).unwrap();
+                        for i in 0..NUM_VALUE_TYPES {
+                            let value_nr = i as ValueNr;
                             
-                            let added = data.get_value_type(value_type);
-                            let add_queue = data.get_add_queue(value_type);
-                            let propergate_queue = data.get_propagate_queue(value_type);
-                            let reset_queue = data.get_select_queue(value_type);
+                            let added = data.get_value_type(value_nr);
+                            let add_queue = data.get_add_queue(value_nr);
+                            let propergate_queue = data.get_remove_queue(value_nr);
+                            let reset_queue = data.get_select_queue();
                             
                             div(ui, |ui| {
                                 ui.label(
                                     format!(
                                         "{} {:?} {} {} {}",
                                         if added {"x"} else {"   "},
-                                        value_type,
+                                        ValueType::try_from_primitive(i).unwrap(),
                                         if add_queue {"A"} else {"   "},
-                                        if propergate_queue {"P"} else {"   "},
-                                        if reset_queue {"R"} else {"   "},
+                                        if propergate_queue {"R"} else {"   "},
+                                        if reset_queue {"S"} else {"   "},
                                     ));
                             });
 

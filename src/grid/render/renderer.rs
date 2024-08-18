@@ -12,8 +12,7 @@ use octa_force::vulkan::ash::vk::{BufferUsageFlags, Format, ImageUsageFlags};
 use octa_force::anyhow::Result;
 use octa_force::egui::load::SizedTexture;
 use octa_force::vulkan::gpu_allocator::MemoryLocation;
-use crate::grid::grid::CHUNK_SIZE;
-use crate::grid::visulation::node_render_data::NodeRenderData;
+use crate::grid::render::node_render_data::NodeRenderData;
 
 const DISPATCH_GROUP_SIZE_X: u32 = 32;
 const DISPATCH_GROUP_SIZE_Y: u32 = 32;
@@ -37,7 +36,15 @@ pub struct GridRenderer {
     render_pipeline_layout: PipelineLayout,
     render_pipeline: ComputePipeline,
 
+    render_buffer: Buffer,
     chunk_buffer: Buffer
+}
+
+#[derive(Clone, Copy)]
+#[allow(dead_code)]
+#[repr(C)]
+struct RenderData {
+    chunk_size: u32,
 }
 
 impl GridRenderer {
@@ -46,6 +53,7 @@ impl GridRenderer {
         context: &mut Context,
         egui_renderer: &mut Renderer,
         num_frames: usize,
+        chunk_size: usize,
         _loaded_chunks: usize
     ) -> Result<Self> {
 
@@ -55,6 +63,10 @@ impl GridRenderer {
                 vk::DescriptorPoolSize {
                     ty: vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
                     descriptor_count: (num_frames * 2) as u32,
+                },
+                vk::DescriptorPoolSize {
+                    ty: vk::DescriptorType::UNIFORM_BUFFER,
+                    descriptor_count: num_frames as u32,
                 },
                 vk::DescriptorPoolSize {
                     ty: vk::DescriptorType::STORAGE_BUFFER,
@@ -83,6 +95,13 @@ impl GridRenderer {
             },
             vk::DescriptorSetLayoutBinding {
                 binding: 1,
+                descriptor_count: 1,
+                descriptor_type: vk::DescriptorType::UNIFORM_BUFFER,
+                stage_flags: vk::ShaderStageFlags::COMPUTE,
+                ..Default::default()
+            },
+            vk::DescriptorSetLayoutBinding {
+                binding: 2,
                 descriptor_count: 1,
                 descriptor_type: vk::DescriptorType::STORAGE_BUFFER,
                 stage_flags: vk::ShaderStageFlags::COMPUTE,
@@ -121,10 +140,20 @@ impl GridRenderer {
             },
         )?;
 
+        let render_buffer = context.create_buffer(
+            BufferUsageFlags::UNIFORM_BUFFER,   
+            MemoryLocation::CpuToGpu,
+            size_of::<RenderData>() as _,
+        )?;
+
+        render_buffer.copy_data_to_buffer(&[RenderData {
+            chunk_size: chunk_size as u32,
+        }])?;
+
         let chunk_buffer = context.create_buffer(
             BufferUsageFlags::STORAGE_BUFFER,
             MemoryLocation::CpuToGpu,
-            (CHUNK_SIZE * CHUNK_SIZE * size_of::<NodeRenderData>()) as _
+            (chunk_size * chunk_size * size_of::<NodeRenderData>()) as _
         )?;
 
         Ok(GridRenderer {
@@ -145,6 +174,7 @@ impl GridRenderer {
             render_pipeline_layout,
             render_pipeline,
 
+            render_buffer,
             chunk_buffer,
         })
     }
@@ -224,6 +254,12 @@ impl GridRenderer {
                     },
                     WriteDescriptorSet {
                         binding: 1,
+                        kind: WriteDescriptorSetKind::UniformBuffer {
+                            buffer: &self.render_buffer,
+                        },
+                    },
+                    WriteDescriptorSet {
+                        binding: 2,
                         kind: WriteDescriptorSetKind::StorageBuffer {
                             buffer: &self.chunk_buffer,
                         },
@@ -243,10 +279,10 @@ impl GridRenderer {
         }
     }
 
-    pub fn set_chunk_data(&mut self, chunk_index: usize, chunk_data: &[NodeRenderData]) {
+    pub fn set_chunk_data(&mut self, chunk_index: usize, chunk_size: usize, chunk_data: &[NodeRenderData]) {
         self.chunk_buffer.copy_data_to_buffer_complex(
             chunk_data,
-            chunk_index * CHUNK_SIZE * CHUNK_SIZE, align_of::<NodeRenderData>()
+            chunk_index * chunk_size * chunk_size, align_of::<NodeRenderData>()
         ).unwrap()
     }
 

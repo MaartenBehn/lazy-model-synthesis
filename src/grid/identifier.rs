@@ -3,16 +3,16 @@ use crate::grid::grid::Grid;
 use crate::identifier::{FastIdentifierT, GeneralIdentifierT, IdentifierConverterT, PackedIdentifierT};
 
 
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct GlobalPos(pub IVec2);
 
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct ChunkNodeIndex {
     pub chunk_index: usize,
     pub node_index: usize,
 }
 
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct PackedChunkNodeIndex(pub u32);
 
 impl GeneralIdentifierT for GlobalPos {
@@ -37,7 +37,7 @@ impl IdentifierConverterT<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex> for G
         self.get_chunk_and_node_index_from_global_pos(i)
     }
 
-    fn genera_from_fast(&mut self, i: ChunkNodeIndex) -> GlobalPos {
+    fn general_from_fast(&mut self, i: ChunkNodeIndex) -> GlobalPos {
         self.get_global_pos_from_chunk_and_node_index(i)
     }
 
@@ -48,7 +48,7 @@ impl IdentifierConverterT<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex> for G
 
     fn general_from_packed(&mut self, i: PackedChunkNodeIndex) -> GlobalPos {
         let fast = self.fast_from_packed(i);
-        self.genera_from_fast(fast)
+        self.general_from_fast(fast)
     }
 
     fn packed_from_fast(&mut self, i: ChunkNodeIndex) -> PackedChunkNodeIndex {

@@ -12,9 +12,11 @@ pub trait Dispatcher<FastIdentifier>: Default + Clone {
 
     fn pop_remove(&mut self) -> Option<(FastIdentifier, ValueNr)>;
 
-    fn push_select(&mut self, fast_identifier: FastIdentifier, value_index: ValueNr);
+    fn push_select(&mut self, fast_identifier: FastIdentifier);
 
-    fn pop_select(&mut self) -> Option<(FastIdentifier, ValueNr)>;
+    fn pop_select(&mut self) -> Option<FastIdentifier>;
+
+    fn select_contains_node(&mut self, fast_identifier: FastIdentifier) -> bool;
 }
 
 

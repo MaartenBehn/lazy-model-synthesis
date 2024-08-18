@@ -1,5 +1,8 @@
-pub(self) mod grid;
-pub(self) mod rules;
-pub(self) mod grid_util;
-pub mod visulation;
-mod identifier;
+pub mod grid;
+pub mod rules;
+pub mod grid_util;
+pub mod profile_visulation;
+pub mod debug_visulation;
+pub mod identifier;
+pub mod render;
+
