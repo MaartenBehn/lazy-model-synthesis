@@ -27,24 +27,21 @@ impl Grid {
         ivec2(x, y)
     }
 
-    pub fn get_chunk_index_from_chunk_pos(&mut self, pos: IVec2) -> usize {
-        self.chunks.iter().position(|c| c.pos == pos).unwrap_or_else(|| {
-            self.add_chunk(pos);
-            self.chunks.len() - 1
-        })
+    pub fn get_chunk_index_from_chunk_pos(&self, pos: IVec2) -> Option<usize> {
+        self.chunks.iter().position(|c| c.pos == pos)
     }
 
-    pub fn get_chunk_and_node_index_from_global_pos(&mut self, pos: GlobalPos) -> ChunkNodeIndex{
+    pub fn get_chunk_and_node_index_from_global_pos(&self, pos: GlobalPos) -> ChunkNodeIndex{
         let in_chunk_pos = self.get_in_chunk_pos_from_global_pos(pos);
         let node_index = self.get_node_index_from_pos_in_chunk(in_chunk_pos);
 
         let chunk_pos = self.get_chunk_pos_from_global_pos(pos);
-        let chunk_index = self.get_chunk_index_from_chunk_pos(chunk_pos);
+        let chunk_index = self.get_chunk_index_from_chunk_pos(chunk_pos).unwrap();
 
         ChunkNodeIndex { chunk_index, node_index }
     }
 
-    pub fn get_global_pos_from_chunk_and_node_index(&mut self, chunk_node_index: ChunkNodeIndex) -> GlobalPos {
+    pub fn get_global_pos_from_chunk_and_node_index(&self, chunk_node_index: ChunkNodeIndex) -> GlobalPos {
         let chunk_pos = self.chunks[chunk_node_index.chunk_index].pos;
         let node_pos = self.get_pos_in_chunk_from_node_index(chunk_node_index.node_index);
 

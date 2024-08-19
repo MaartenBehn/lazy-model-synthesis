@@ -20,14 +20,14 @@ pub trait PackedIdentifierT: Copy + Default + Debug + Eq {
 
 
 pub trait IdentifierConverterT<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: PackedIdentifierT> {
-    fn fast_from_general(&mut self, i: GI) -> FI;
-    fn general_from_fast(&mut self, i: FI) -> GI;
+    fn fast_from_general(&self, i: GI) -> FI;
+    fn general_from_fast(&self, i: FI) -> GI;
 
-    fn packed_from_general(&mut self, i: GI) -> PI;
-    fn general_from_packed(&mut self, i: PI) -> GI;
+    fn packed_from_general(&self, i: GI) -> PI;
+    fn general_from_packed(&self, i: PI) -> GI;
 
-    fn packed_from_fast(&mut self, i: FI) -> PI;
-    fn fast_from_packed(&mut self, i: PI) -> FI;
+    fn packed_from_fast(&self, i: FI) -> PI;
+    fn fast_from_packed(&self, i: PI) -> FI;
 }
 
 

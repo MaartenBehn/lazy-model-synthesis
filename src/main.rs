@@ -22,8 +22,8 @@ mod identifier;
 mod util;
 mod node_manager;
 
-const WIDTH: u32 = 1280; // 2200;
-const HEIGHT: u32 = 720; // 1250;
+const WIDTH: u32 = 1920; // 2200;
+const HEIGHT: u32 = 1080; // 1250;
 const APP_NAME: &str = "Lazy Model Synthesis";
 
 enum Visulation {

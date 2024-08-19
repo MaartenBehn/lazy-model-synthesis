@@ -52,6 +52,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> NodeManager<N, D, GI, FI, PI, VD, 
     
     pub fn get_current(&self) -> &N { &self.current }
     pub fn get_current_mut(&mut self) -> &mut N { &mut self.current }
+    pub fn get_history(&self) -> &History<N> { &self.history }
 
     pub fn select_initial_value(&mut self, identifier: GI, value_data: VD) {
         let fast_lookup = self.current.fast_from_general(identifier);

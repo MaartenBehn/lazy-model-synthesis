@@ -4,12 +4,13 @@ use num_enum::TryFromPrimitive;
 use octa_force::gui::Gui;
 use octa_force::anyhow::*;
 use octa_force::{BaseApp, egui, glam};
-use octa_force::egui::{Align, FontId, Frame, Id, Layout, Pos2, Ui, Widget};
+use octa_force::egui::{Align, FontId, Frame, Id, Layout, Pos2, RichText, Ui, Widget};
 use octa_force::egui::FontFamily::Proportional;
 use octa_force::egui::panel::Side;
 use octa_force::egui::TextStyle::{Body, Button, Heading, Monospace, Small};
 use octa_force::egui_winit::winit::event::WindowEvent;
 use octa_force::glam::{IVec2, vec2, Vec2};
+use octa_force::puffin_egui::puffin;
 use octa_force::vulkan::ash::vk::AttachmentLoadOp;
 use crate::grid::grid::{Grid, ValueData};
 use crate::grid::identifier::{ChunkNodeIndex, GlobalPos, PackedChunkNodeIndex};
@@ -18,6 +19,7 @@ use crate::grid::render::node_render_data::NUM_VALUE_TYPES;
 use crate::grid::render::renderer::GridRenderer;
 use crate::grid::render::selector::Selector;
 use crate::grid::rules::{get_example_rules, NUM_REQS, NUM_VALUES, ValueType};
+use crate::identifier::IdentifierConverterT;
 use crate::LazyModelSynthesis;
 use crate::node_manager::NodeManager;
 use crate::util::state_saver::StateSaver;
@@ -144,6 +146,8 @@ impl GridDebugVisulation {
             
             
             egui::SidePanel::new(Side::Left, Id::new("Side Panel")).show(ctx, |ui| {
+                puffin::profile_scope!("Left Panel");
+                
                 ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
                     div(ui, |ui| {
                         ui.heading("Grid (Debug Mode)");
@@ -244,7 +248,44 @@ impl GridDebugVisulation {
                 
             });
 
+            egui::SidePanel::new(Side::Right, Id::new("Side Panel 2")).show(ctx, |ui| {
+                puffin::profile_scope!("History Panel");
+                
+                
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    ui.set_min_width(200.0);
+                    
+                    let grid = self.state_saver.get_state().get_current();
+                    let history = self.state_saver.get_state().get_history();
+                    
+                    for (i, history_node) in history.nodes.iter().enumerate() {
+                        if history_node.is_change() {
+                            let (packed_identifier, value_nr) = history.packer.unpack_change::<PackedChunkNodeIndex>(*history_node);
+                            
+                            let pos = grid.general_from_packed(packed_identifier);
+                            let value_data = ValueType::try_from_primitive(value_nr).unwrap();
+                            
+                            if self.selector.last_selected.is_some() && self.selector.last_selected == Some(pos.0) {
+                                ui.scroll_to_cursor(Some(Align::Center));
+
+                                ui.label(RichText::new(format!("-> {}: [{} {}] - {:?}", i, pos.0.x, pos.0.y, value_data)).heading().strong());
+                            } else {
+                                ui.label(format!("-- {}: [{} {}] - {:?}", i, pos.0.x, pos.0.y, value_data));
+                            };
+                        } else {
+                            ui.heading(format!("- Summray"));
+                        }
+                    }
+                    
+                    
+                });
+                
+                
+            });
+
             egui::CentralPanel::default().show(ctx, |ui| {
+                puffin::profile_scope!("Center Panel");
+                
                 let available_size = egui_vec2_to_glam_vec2(ui.available_size());
                 self.grid_renderer.wanted_size = available_size.as_uvec2();
 
