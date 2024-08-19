@@ -54,20 +54,39 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> NodeManager<N, D, GI, FI, PI, VD, 
     pub fn get_current_mut(&mut self) -> &mut N { &mut self.current }
     pub fn get_history(&self) -> &History<N> { &self.history }
 
-    pub fn select_initial_value(&mut self, identifier: GI, value_data: VD) {
+    pub fn select_value(&mut self, identifier: GI, value_data: VD) {
         let fast_lookup = self.current.fast_from_general(identifier);
         let node = self.current.get_mut_node(fast_lookup);
-        
         let value_nr = value_data.get_value_nr();
-        node.add_value_with_index(0, value_data);
-        self.dispatcher.push_add(fast_lookup, value_nr);
         
-        self.dispatcher.push_select(fast_lookup);
-        
-        if DEBUG {   // For debugging
-            self.current.on_add_value_callback(fast_lookup, value_nr);
-            self.current.on_push_add_queue_callback(fast_lookup, value_nr);
-            self.current.on_push_select_queue_callback(fast_lookup);
+        // Check if node already had the value once
+        let history_index = node.last_removed[value_nr as usize];
+        if history_index == 0 {
+            // The node never had this value
+            
+            // Check if the node doesn't has the value add it.
+            let value_index = node.get_value_index_from_value_nr(value_nr);
+            if value_index.is_err() {
+                let value_index = value_index.err().unwrap();
+                node.add_value_with_index(value_index, value_data);
+
+                self.dispatcher.push_add(fast_lookup, value_nr);
+                if DEBUG {
+                    self.current.on_push_add_queue_callback(fast_lookup, value_nr);
+                    self.current.on_add_value_callback(fast_lookup, value_nr);
+                }
+            }
+
+            self.dispatcher.push_select(fast_lookup);
+
+            if DEBUG {   // For debugging
+                self.current.on_push_select_queue_callback(fast_lookup);
+            }
+        } else {
+            // The node already had the value once -> Reset world to earlier state
+            
+            info!("Go back in time!!")
+            
         }
     }
 

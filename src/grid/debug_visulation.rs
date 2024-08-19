@@ -58,7 +58,7 @@ impl GridDebugVisulation {
         grid.rules = get_example_rules();
 
         let mut node_manager = NodeManager::new(grid.clone(), NUM_VALUES, NUM_REQS);
-        node_manager.select_initial_value(GlobalPos(IVec2::new(0, 0)), ValueData::new(ValueType::Stone));
+        node_manager.select_value(GlobalPos(IVec2::new(0, 0)), ValueData::new(ValueType::Stone));
         
         let state_saver = StateSaver::from_state(node_manager, 100);
 
@@ -90,6 +90,14 @@ impl GridDebugVisulation {
         frame_index: usize,
         _delta_time: Duration,
     ) -> Result<()> {
+        
+        if base.controls.mouse_left && self.selector.last_selected.is_some() && self.selector.value_type_to_place.is_some() {
+            self.state_saver.get_state_mut().select_value(
+                GlobalPos(self.selector.last_selected.unwrap()), 
+                ValueData::new(self.selector.value_type_to_place.unwrap())
+            );
+        }
+        
         if self.run {
             self.state_saver.set_next_tick(TickType::ForwardSave);
             for _ in 0..self.run_ticks_per_frame {
@@ -147,7 +155,7 @@ impl GridDebugVisulation {
             
             egui::SidePanel::new(Side::Left, Id::new("Side Panel")).show(ctx, |ui| {
                 puffin::profile_scope!("Left Panel");
-                
+
                 ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
                     div(ui, |ui| {
                         ui.heading("Grid (Debug Mode)");
@@ -199,6 +207,25 @@ impl GridDebugVisulation {
                     });
 
                     ui.separator();
+                    
+                    
+                    div(ui, |ui| {
+                        ui.label("Place: ");
+
+                        for i in 0..NUM_VALUE_TYPES {
+                            let value_nr = i as ValueNr;
+                            let value_type = ValueType::try_from_primitive(value_nr).unwrap();
+                            
+                            let mut checked = self.selector.value_type_to_place == Some(value_type); 
+                            ui.checkbox(&mut checked, format!("{:?}", value_type));
+                            if checked {
+                                self.selector.value_type_to_place = Some(value_type);
+                            }
+                        }
+                        
+                    });
+
+                    ui.separator();
 
                     div(ui, |ui| {
                         ui.heading("Selected Node");
@@ -245,26 +272,25 @@ impl GridDebugVisulation {
                         });
                     }
                 });
-                
             });
 
             egui::SidePanel::new(Side::Right, Id::new("Side Panel 2")).show(ctx, |ui| {
                 puffin::profile_scope!("History Panel");
-                
-                
+
+
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.set_min_width(200.0);
-                    
+
                     let grid = self.state_saver.get_state().get_current();
                     let history = self.state_saver.get_state().get_history();
-                    
+
                     for (i, history_node) in history.nodes.iter().enumerate() {
                         if history_node.is_change() {
                             let (packed_identifier, value_nr) = history.packer.unpack_change::<PackedChunkNodeIndex>(*history_node);
-                            
+
                             let pos = grid.general_from_packed(packed_identifier);
                             let value_data = ValueType::try_from_primitive(value_nr).unwrap();
-                            
+
                             if self.selector.last_selected.is_some() && self.selector.last_selected == Some(pos.0) {
                                 ui.scroll_to_cursor(Some(Align::Center));
 
@@ -276,16 +302,16 @@ impl GridDebugVisulation {
                             ui.heading(format!("- Summray"));
                         }
                     }
-                    
-                    
+
+
                 });
-                
-                
+
+
             });
 
             egui::CentralPanel::default().show(ctx, |ui| {
                 puffin::profile_scope!("Center Panel");
-                
+
                 let available_size = egui_vec2_to_glam_vec2(ui.available_size());
                 self.grid_renderer.wanted_size = available_size.as_uvec2();
 

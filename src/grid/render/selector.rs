@@ -1,17 +1,20 @@
 use octa_force::glam::{IVec2, Vec2};
 use crate::grid::grid::Grid;
 use crate::grid::identifier::GlobalPos;
+use crate::grid::rules::ValueType;
 
 const PIXELS_PER_NODE: f32 = 30.0;
 
 pub struct Selector {
     pub last_selected: Option<IVec2>,
+    pub value_type_to_place: Option<ValueType>,
 }
 
 impl Selector {
     pub fn new() -> Self {
         Selector {
-            last_selected: None
+            last_selected: None,
+            value_type_to_place: None,
         }
     }
 

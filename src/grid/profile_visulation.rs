@@ -74,7 +74,7 @@ impl GridProfileVisulation {
         grid.rules = get_example_rules();
 
         let mut node_manager = NodeManager::new(grid.clone(), NUM_VALUES, NUM_REQS);
-        node_manager.select_initial_value(GlobalPos(IVec2::new(0, 0)), ValueData::new(ValueType::Stone));
+        node_manager.select_value(GlobalPos(IVec2::new(0, 0)), ValueData::new(ValueType::Stone));
 
         node_manager
     }
