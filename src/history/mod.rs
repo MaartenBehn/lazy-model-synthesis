@@ -1,36 +1,36 @@
 mod node;
 
-use crate::history::node::{HistoryNode, HistoryNodePacker};
+use crate::history::node::{HistoryNode, HistoryNodePacker, SummaryIndex};
 use crate::identifier::PackedIdentifierT;
 use crate::node::HistoryIndex;
 use crate::value::ValueNr;
 
 #[derive(Default, Clone)]
-pub struct History<NodeStorage> {
+pub struct History<NodeStorage: Clone> {
     pub packer: HistoryNodePacker,
-
     
     pub nodes: Vec<HistoryNode>,
     pub summaries: Vec<NodeStorage>
 }
 
-impl<NodeStorage> History<NodeStorage> {
-    pub fn new(node_storage: NodeStorage, num_values: usize) -> Self {
+impl<NodeStorage: Clone> History<NodeStorage> {
+    pub fn new(num_values: usize) -> Self {
 
         let packer = HistoryNodePacker::new(num_values);
-        let initial_summary = packer.pack_summary(0);
         
         History {
             packer,
-            nodes: vec![initial_summary],
-            summaries: vec![node_storage],
+            nodes: vec![],
+            summaries: vec![],
         }
     }
 
-    pub fn add_summary(&mut self) {
-        debug_assert!(self.summaries.len() >= (1 << 31), "Summaries are full!");
-        
-        todo!()
+    pub fn add_summary(&mut self, node_storage: NodeStorage) {
+        debug_assert!(self.summaries.len() < (1 << 31), "Summaries are full!");
+
+        let history_node = self.packer.pack_summary(self.summaries.len() as SummaryIndex);
+        self.nodes.push(history_node);
+        self.summaries.push(node_storage);
     }
 
     pub fn add_change<I: PackedIdentifierT>(&mut self, packed_identifier: I, value_nr: ValueNr) -> HistoryIndex {
@@ -50,8 +50,34 @@ impl<NodeStorage> History<NodeStorage> {
         &self.summaries[summary_index as usize]
     }
 
-    pub fn get_change<I: PackedIdentifierT>(&self, index: HistoryIndex) -> (I, ValueNr) {
-        self.packer.unpack_change(self.nodes[index as usize])
+    pub fn get_change<I: PackedIdentifierT>(&self, index: usize) -> (I, ValueNr) {
+        self.packer.unpack_change(self.nodes[index])
     }
+    
+    pub fn last_index(&self) -> HistoryIndex {
+        if self.nodes.is_empty() {
+            return 0
+        }
+        
+        (self.nodes.len() - 1) as HistoryIndex
+    }
+    
+    pub fn last_summary_before_change(&self, mut index: usize) -> usize {
+        let mut summary_index = 0;
+        for i in (0..index).rev() {
+            if self.nodes[i].is_summary() {
+                summary_index = i;
+                break
+            }
+        }
+        
+        summary_index
+    }
+    
+    pub fn remove_all_after_with_last_summary_index(&mut self, index: usize, summary_index: usize) {
+        self.nodes.truncate(index + 1);
+        self.summaries.truncate(summary_index + 1);
+    }
+
 }
 

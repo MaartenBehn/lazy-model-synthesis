@@ -112,10 +112,7 @@ impl NodeStorage<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex, ValueData> for
     fn select_value_from_slice(&mut self, fast: ChunkNodeIndex) -> ValueIndex {
         let value_len = self.chunks[fast.chunk_index].nodes[fast.node_index].values.len();
         let value_index = self.rng.usize(0..value_len) as ValueIndex;
-
-        let value_nr = self.chunks[fast.chunk_index].nodes[fast.node_index].values[value_index].value_data.get_value_nr();
-        self.chunks[fast.chunk_index].render_data[fast.node_index].set_selected_value_type(value_nr);
-
+        
         value_index
     }
 
@@ -126,6 +123,10 @@ impl NodeStorage<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex, ValueData> for
 
     fn on_remove_value_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
         self.chunks[fast.chunk_index].render_data[fast.node_index].set_value_type(value_nr, false);
+    }
+
+    fn on_select_value_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_selected_value_type(value_nr);
     }
 
     fn on_push_add_queue_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {

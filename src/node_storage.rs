@@ -29,6 +29,7 @@ pub trait NodeStorage<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: PackedIde
     // Callbacks for debug rendering
     fn on_add_value_callback(&mut self, fast: FI, value_nr: ValueNr);
     fn on_remove_value_callback(&mut self, fast: FI, value_nr: ValueNr);
+    fn on_select_value_callback(&mut self, fast: FI, value_nr: ValueNr);
 
     fn on_push_add_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
     fn on_pop_add_queue_callback(&mut self, fast: FI, value_nr: ValueNr);

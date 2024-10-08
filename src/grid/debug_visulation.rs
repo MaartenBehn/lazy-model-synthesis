@@ -1,3 +1,4 @@
+use std::ffi::c_float;
 use crate::util::state_saver::TickType;
 use std::time::Duration;
 use num_enum::TryFromPrimitive;
@@ -21,6 +22,7 @@ use crate::grid::render::selector::Selector;
 use crate::grid::rules::{get_example_rules, NUM_REQS, NUM_VALUES, ValueType};
 use crate::identifier::IdentifierConverterT;
 use crate::LazyModelSynthesis;
+use crate::node::HistoryIndex;
 use crate::node_manager::NodeManager;
 use crate::util::state_saver::StateSaver;
 use crate::value::ValueNr;
@@ -283,7 +285,15 @@ impl GridDebugVisulation {
 
                     let grid = self.state_saver.get_state().get_current();
                     let history = self.state_saver.get_state().get_history();
-
+                    
+                    let reset_history_indices = if self.selector.last_selected.is_some() {
+                        let fast_index = grid.fast_from_general(GlobalPos(self.selector.last_selected.unwrap()));
+                        let node = &grid.chunks[fast_index.chunk_index].nodes[fast_index.node_index];
+                        node.last_removed.to_owned()
+                    } else {
+                        vec![]
+                    };
+                    
                     for (i, history_node) in history.nodes.iter().enumerate() {
                         if history_node.is_change() {
                             let (packed_identifier, value_nr) = history.packer.unpack_change::<PackedChunkNodeIndex>(*history_node);
@@ -291,15 +301,40 @@ impl GridDebugVisulation {
                             let pos = grid.general_from_packed(packed_identifier);
                             let value_data = ValueType::try_from_primitive(value_nr).unwrap();
 
-                            if self.selector.last_selected.is_some() && self.selector.last_selected == Some(pos.0) {
-                                ui.scroll_to_cursor(Some(Align::Center));
+                            let mut added = false;
+                            if self.selector.last_selected.is_some() {
+                                if self.selector.last_selected == Some(pos.0) {
+                                    ui.scroll_to_cursor(Some(Align::Center));
+                                    ui.label(RichText::new(format!("-> {}: [{} {}] - {:?}", i, pos.0.x, pos.0.y, value_data)).heading().strong());
 
-                                ui.label(RichText::new(format!("-> {}: [{} {}] - {:?}", i, pos.0.x, pos.0.y, value_data)).heading().strong());
-                            } else {
+                                    added = true;
+                                }
+
+                                for index in reset_history_indices.iter() {
+                                    if (*index as usize) == i {
+                                        ui.label(RichText::new(format!(">> {}: [{} {}] - {:?}", i, pos.0.x, pos.0.y, value_data)).heading().strong());
+                                        added = true;
+                                        break;
+                                    }
+                                }
+                            } 
+                            
+                            if !added {
                                 ui.label(format!("-- {}: [{} {}] - {:?}", i, pos.0.x, pos.0.y, value_data));
-                            };
+                            }
                         } else {
-                            ui.heading(format!("- Summray"));
+                            let mut added = false;
+                            for index in reset_history_indices.iter() {
+                                if (*index as usize) == i {
+                                    ui.label(RichText::new(format!(">> Summray")).heading().strong());
+                                    added = true;
+                                    break;
+                                }
+                            }
+
+                            if !added {
+                                ui.heading(format!("- Summray"));
+                            }
                         }
                     }
 

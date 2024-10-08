@@ -4,6 +4,7 @@ use octa_force::puffin_egui::puffin;
 use crate::dispatcher::Dispatcher;
 use crate::history::History;
 use crate::identifier::{FastIdentifierT, GeneralIdentifierT, PackedIdentifierT};
+use crate::node::{HistoryIndex, ValueIndex};
 use crate::node_storage::NodeStorage;
 use crate::util::state_saver::State;
 use crate::value::{ValueDataT, ValueNr};
@@ -30,6 +31,8 @@ pub struct NodeManager<N, D, GI, FI, PI, VD, const DEBUG: bool>
     history: History<N>,
     current: N,
     dispatcher: D,
+    last_remove_befor_select: HistoryIndex,
+    first_remove: bool
 }
 
 impl<N, D, GI, FI, PI, VD, const DEBUG: bool> NodeManager<N, D, GI, FI, PI, VD, DEBUG>
@@ -44,8 +47,10 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> NodeManager<N, D, GI, FI, PI, VD, 
     pub fn new(node_storage: N, max_num_values: usize, max_num_reqs: usize) -> Self {
         NodeManager {
             req_by_packer: ValueReqByPacker::new(max_num_values, max_num_reqs),
-            history: History::new(node_storage.clone(), max_num_values),
+            history: History::new(max_num_values),
             current: node_storage,
+            last_remove_befor_select: 0,
+            first_remove: true,
             .. Default::default()
         }
     }
@@ -55,8 +60,8 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> NodeManager<N, D, GI, FI, PI, VD, 
     pub fn get_history(&self) -> &History<N> { &self.history }
 
     pub fn select_value(&mut self, identifier: GI, value_data: VD) {
-        let fast_lookup = self.current.fast_from_general(identifier);
-        let node = self.current.get_mut_node(fast_lookup);
+        let fast_identifier = self.current.fast_from_general(identifier);
+        let node = self.current.get_mut_node(fast_identifier);
         let value_nr = value_data.get_value_nr();
         
         // Check if node already had the value once
@@ -64,30 +69,111 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> NodeManager<N, D, GI, FI, PI, VD, 
         if history_index == 0 {
             // The node never had this value
             
-            // Check if the node doesn't has the value add it.
+            // If the node doesn't had the value add it.
             let value_index = node.get_value_index_from_value_nr(value_nr);
             if value_index.is_err() {
                 let value_index = value_index.err().unwrap();
                 node.add_value_with_index(value_index, value_data);
 
-                self.dispatcher.push_add(fast_lookup, value_nr);
+                self.dispatcher.push_add(fast_identifier, value_nr);
                 if DEBUG {
-                    self.current.on_push_add_queue_callback(fast_lookup, value_nr);
-                    self.current.on_add_value_callback(fast_lookup, value_nr);
+                    self.current.on_push_add_queue_callback(fast_identifier, value_nr);
+                    self.current.on_add_value_callback(fast_identifier, value_nr);
                 }
             }
 
-            self.dispatcher.push_select(fast_lookup);
+            self.dispatcher.push_select(fast_identifier);
 
             if DEBUG {   // For debugging
-                self.current.on_push_select_queue_callback(fast_lookup);
+                self.current.on_push_select_queue_callback(fast_identifier);
             }
         } else {
             // The node already had the value once -> Reset world to earlier state
             
-            info!("Go back in time!!")
-            
+            info!("Go back in time to {history_index}");
+            self.go_back_in_time(history_index as usize);
+
+            let node = self.current.get_mut_node(fast_identifier);
+            let value_index = node.get_value_index_from_value_nr(value_nr).unwrap();
+            self.perform_select(fast_identifier, value_index);
         }
+    }
+
+    pub fn go_back_in_time(&mut self, index: usize) {
+        let summary_index = self.history.last_summary_before_change(index);
+        self.current = self.history.get_summary(summary_index).clone();
+        
+        for i in (summary_index + 1)..index {
+            let (packed_identifier, value_nr) = self.history.get_change(i);
+            
+            let fast_identifier = self.current.fast_from_packed(packed_identifier);
+            let node = self.current.get_mut_node(fast_identifier);
+            
+            let value_index = node.get_value_index_from_value_nr(value_nr);
+            if value_index.is_err() {
+                continue;
+            }
+            let value_index = value_index.unwrap();
+
+            let req_by_len = node.values[value_index].req_by.len();
+
+            /*
+            // Go over values that require this value and check if they should also be removed.
+            for j in 0..req_by_len {
+
+                // Get the req by
+                let node = self.current.get_mut_node(fast_identifier);
+                if node.values.len() <= value_index {
+                    continue
+                }
+                
+                let req_by = node.values[value_index].req_by[j];
+
+                // Identify the req that is linked to this value
+                let (req_packed_identifier, req_value_nr, req_index) = self.req_by_packer.unpack::<PI>(req_by);
+                let req_fast_identifier = self.current.fast_from_packed(req_packed_identifier);
+
+                // Get the req node and find the value
+                let req_node = self.current.get_mut_node(req_fast_identifier);
+                let req_value_index = req_node.get_value_index_from_value_nr(req_value_nr);
+                if req_value_index.is_err() {
+                    // The req value was already removed -> Skip
+                    continue;
+                }
+                let req_value_index = req_value_index.unwrap();
+
+                /*
+                // Check if the value that requires this value should be removed
+                let req_should_be_removed = req_node.values[req_value_index].reqs[req_index].on_remove_req_by();
+                if req_should_be_removed {
+                    //self.dispatcher.push_remove(req_fast_identifier, req_value_nr);
+
+                    if DEBUG {
+                        self.current.on_push_remove_queue_callback(req_fast_identifier, req_value_nr);
+                    }
+                }
+                 */
+            }
+            
+             */
+
+            let node = self.current.get_mut_node(fast_identifier);
+            node.values.remove(value_index);
+
+            if node.values.len() == 1 {
+                node.selected = true;
+
+                let last_value_nr = node.values[0].value_data.get_value_nr();
+                self.current.on_select_value_callback(fast_identifier, last_value_nr);
+            }
+
+            if DEBUG {
+                self.current.on_remove_value_callback(fast_identifier, value_nr);
+            }
+        }
+        
+        
+        self.history.remove_all_after_with_last_summary_index(index, summary_index);
     }
 
     pub fn tick(&mut self) -> bool {
@@ -274,11 +360,11 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> NodeManager<N, D, GI, FI, PI, VD, 
         // by packing the node identifier and value nr.
         let value_nr = value_data.get_value_nr();
         let packed = self.current.packed_from_fast(fast_identifier);
-        let history_index = self.history.add_change(packed, value_nr);
+        self.history.add_change(packed, value_nr);
 
         // Save the index of the history node marking the removal in the node of later resetting.
         let node = self.current.get_mut_node(fast_identifier);
-        node.last_removed[value_nr as usize] = history_index;
+        node.last_removed[value_nr as usize] = self.last_remove_befor_select;
 
         node.values.remove(value_index);
 
@@ -305,8 +391,24 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> NodeManager<N, D, GI, FI, PI, VD, 
                 return;
             }
         }
+
+        if self.first_remove {
+            self.history.add_summary(self.current.clone());
+            self.first_remove = false;
+        }
         
         let value_index = self.current.select_value_from_slice(fast_identifier);
+
+        self.perform_select(fast_identifier, value_index);
+    }
+    
+    fn perform_select(&mut self, fast_identifier: FI, value_index: ValueIndex) {
+        if DEBUG {
+            let node = self.current.get_mut_node(fast_identifier);
+            let value_data = node.values[value_index].value_data;
+            let value_nr = value_data.get_value_nr();
+            self.current.on_select_value_callback(fast_identifier, value_nr);
+        }
 
         let node = self.current.get_mut_node(fast_identifier);
         let req_by_len = node.values[value_index].req_by.len();
@@ -315,6 +417,8 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> NodeManager<N, D, GI, FI, PI, VD, 
         // All other values will be later removed
         node.values.swap(0, value_index);
         node.selected = true;
+
+        self.last_remove_befor_select = self.history.last_index();
 
         // Go over all values that are not selected and will be removed
         for i in (1..node.values.len()).rev() {
@@ -330,16 +434,16 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> NodeManager<N, D, GI, FI, PI, VD, 
             // Identify the req that is linked to this value
             let (req_packed_identifier, req_value_nr, _) = self.req_by_packer.unpack::<PI>(req_by);
             let req_fast_identifier = self.current.fast_from_packed(req_packed_identifier);
-            
+
             let req_node = self.current.get_mut_node(req_fast_identifier);
             if req_node.selected {
                 continue;
             }
-            
+
             if self.dispatcher.select_contains_node(req_fast_identifier) {
                 continue;
             }
-            
+
             self.dispatcher.push_select(req_fast_identifier);
 
             if DEBUG {
