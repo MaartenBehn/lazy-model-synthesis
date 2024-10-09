@@ -1,15 +1,13 @@
+use crate::general_data_structure::identifier::{FastIdentifierT, GeneralIdentifierT, IdentifierConverterT, PackedIdentifierT};
+use crate::general_data_structure::{ValueDataT, ValueNr};
+use crate::general_data_structure::node::{NodeT, ValueIndex};
 
-use crate::node::{Node, ValueIndex};
-use crate::identifier::{FastIdentifierT, GeneralIdentifierT, IdentifierConverterT, PackedIdentifierT};
-use crate::value::{Value, ValueDataT, ValueNr};
-
-pub trait NodeStorage<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: PackedIdentifierT, VD: ValueDataT>: 
+pub trait NodeStorageT<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: PackedIdentifierT, NO: NodeT<VD>, VD: ValueDataT>: 
     IdentifierConverterT<GI, FI, PI> + Default + Clone
 {
     type Req: Clone;
-    type ShuffleSeed: Copy;
     
-    fn get_mut_node(&mut self, fast_lookup: FI) -> &mut Node<VD>;
+    fn get_mut_node(&mut self, fast_lookup: FI) -> &mut NO;
 
     fn get_num_reqs_for_value_data(&mut self, value_data: &VD) -> usize;
     fn get_req_for_value_data(&mut self, value_data: &VD, index: usize) -> Self::Req;

@@ -1,5 +1,5 @@
 
-use crate::value::ValueNr;
+use crate::general_data_structure::ValueNr;
 
 
 const SELECTOR_BIT: usize = 31;

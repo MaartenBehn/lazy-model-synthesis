@@ -1,6 +1,7 @@
-use crate::identifier::PackedIdentifierT;
+
 use crate::util::get_num_bits_for_number;
-use crate::value::ValueNr;
+use crate::general_data_structure::identifier::PackedIdentifierT;
+use crate::general_data_structure::ValueNr;
 
 
 pub type SummaryIndex = u32;

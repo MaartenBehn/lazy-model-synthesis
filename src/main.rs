@@ -8,19 +8,17 @@ use octa_force::egui_winit::winit::event::WindowEvent;
 use octa_force::glam::{uvec2, vec2};
 use octa_force::gui::Gui;
 use octa_force::vulkan::ash::vk::AttachmentLoadOp;
-use crate::grid::debug_visulation::GridDebugVisulation;
-use crate::grid::profile_visulation::GridProfileVisulation;
+use crate::grid::debug_depth_visulation::GridDebugDepthVisulation;
+use crate::grid::debug_go_back_visulation::GridDebugGoBackVisulation;
+use crate::grid::profile_go_back_visulation::GridProfileGoBackVisulation;
 
 
-mod node;
-mod value;
-mod node_storage;
+mod general_data_structure;
 mod grid;
 mod dispatcher;
-mod history;
-mod identifier;
 mod util;
-mod node_manager;
+mod go_back_in_time;
+mod depth_search;
 
 const WIDTH: u32 = 1920; // 2200;
 const HEIGHT: u32 = 1080; // 1250;
@@ -28,8 +26,9 @@ const APP_NAME: &str = "Lazy Model Synthesis";
 
 enum Visulation {
     None,
-    GridDebug,
-    GridProfile,
+    GridGoBackDebug,
+    GridGoBackProfile,
+    GridDepthDebug,
 }
 
 fn main() -> Result<()> {
@@ -44,8 +43,9 @@ fn main() -> Result<()> {
 }
 
 struct LazyModelSynthesis {
-    grid_debug_renderer: GridDebugVisulation,
-    grid_profile_renderer: GridProfileVisulation,
+    grid_debug_go_back_renderer: GridDebugGoBackVisulation,
+    grid_profile_go_back_renderer: GridProfileGoBackVisulation,
+    grid_debug_depth_renderer: GridDebugDepthVisulation,
     current_renderer: Visulation,
     
     gui: Gui,
@@ -54,8 +54,9 @@ struct LazyModelSynthesis {
 impl App for LazyModelSynthesis {
     fn new(base: &mut BaseApp<Self>) -> Result<Self> {
 
-        let grid_debug_renderer = GridDebugVisulation::new(base)?;
-        let grid_profile_renderer = GridProfileVisulation::new(base)?;
+        let grid_debug_go_back_renderer = GridDebugGoBackVisulation::new(base)?;
+        let grid_profile_go_back_renderer = GridProfileGoBackVisulation::new(base)?;
+        let grid_debug_depth_renderer = GridDebugDepthVisulation::new(base)?;
         
         let mut gui = Gui::new(
             &base.context,
@@ -66,8 +67,9 @@ impl App for LazyModelSynthesis {
         )?;
 
         Ok(Self {
-            grid_debug_renderer,
-            grid_profile_renderer,
+            grid_debug_go_back_renderer,
+            grid_profile_go_back_renderer,
+            grid_debug_depth_renderer,
             current_renderer: Visulation::None,
             gui,
         })
@@ -85,11 +87,14 @@ impl App for LazyModelSynthesis {
         
         match self.current_renderer {
             Visulation::None => {}
-            Visulation::GridDebug => {
-                self.grid_debug_renderer.update(base, frame_index, delta_time)?;
+            Visulation::GridGoBackDebug => {
+                self.grid_debug_go_back_renderer.update(base, frame_index, delta_time)?;
             }
-            Visulation::GridProfile => {
-                self.grid_profile_renderer.update(base, frame_index, delta_time)?;
+            Visulation::GridGoBackProfile => {
+                self.grid_profile_go_back_renderer.update(base, frame_index, delta_time)?;
+            }
+            Visulation::GridDepthDebug => {
+                self.grid_debug_depth_renderer.update(base, frame_index, delta_time)?;
             }
         }
         
@@ -103,11 +108,14 @@ impl App for LazyModelSynthesis {
     ) -> Result<()> {
         match self.current_renderer {
             Visulation::None => { self.render_start_screen(base, frame_index)?; }
-            Visulation::GridDebug => {
-                self.grid_debug_renderer.record_render_commands(base, frame_index)?;
+            Visulation::GridGoBackDebug => {
+                self.grid_debug_go_back_renderer.record_render_commands(base, frame_index)?;
             }
-            Visulation::GridProfile => {
-                self.grid_profile_renderer.record_render_commands(base, frame_index)?
+            Visulation::GridGoBackProfile => {
+                self.grid_profile_go_back_renderer.record_render_commands(base, frame_index)?
+            }
+            Visulation::GridDepthDebug => {
+                self.grid_debug_depth_renderer.record_render_commands(base, frame_index)?
             }
         }
 
@@ -119,11 +127,14 @@ impl App for LazyModelSynthesis {
             Visulation::None => {
                 self.gui.handle_event(&base.window, event)
             }
-            Visulation::GridDebug => {
-                self.grid_debug_renderer.on_window_event(base, event)?;
+            Visulation::GridGoBackDebug => {
+                self.grid_debug_go_back_renderer.on_window_event(base, event)?;
             }
-            Visulation::GridProfile => {
-                self.grid_profile_renderer.on_window_event(base, event)?;
+            Visulation::GridGoBackProfile => {
+                self.grid_profile_go_back_renderer.on_window_event(base, event)?;
+            }
+            Visulation::GridDepthDebug => {
+                self.grid_debug_depth_renderer.on_window_event(base, event)?;
             }
         }
         
@@ -174,14 +185,20 @@ impl LazyModelSynthesis {
                     ui.add_space(50.0);
                     
                     
-                    if ui.button("Grid (Debug Mode)").clicked() {
-                        self.current_renderer = Visulation::GridDebug;
+                    if ui.button("Grid Go Back (Debug Mode)").clicked() {
+                        self.current_renderer = Visulation::GridGoBackDebug;
                     }
 
                     ui.add_space(20.0);
 
-                    if ui.button("Grid (Profile Mode)").clicked() {
-                        self.current_renderer = Visulation::GridProfile;
+                    if ui.button("Grid Go Back (Profile Mode)").clicked() {
+                        self.current_renderer = Visulation::GridGoBackProfile;
+                    }
+
+                    ui.add_space(20.0);
+
+                    if ui.button("Grid Depth (Debug Mode)").clicked() {
+                        self.current_renderer = Visulation::GridDepthDebug;
                     }
                 })
             });

@@ -3,36 +3,37 @@
 use std::iter::repeat_with;
 use fastrand::Rng;
 use octa_force::glam::IVec2;
+use crate::go_back_in_time::node::GoBackNode;
+use crate::general_data_structure::node_storage::NodeStorageT;
 use crate::grid::rules::{NeighborReq, NUM_VALUES, Rule, ValueType};
 use crate::grid::identifier::{ChunkNodeIndex, GlobalPos, PackedChunkNodeIndex};
 use crate::grid::render::node_render_data::NodeRenderData;
-use crate::node::{Node, ValueIndex};
-use crate::node_storage::NodeStorage;
 use crate::util::get_num_bits_for_number;
-use crate::value::{ValueDataT, ValueNr};
+use crate::general_data_structure::{ValueDataT, ValueNr};
+use crate::general_data_structure::node::{NodeT, ValueIndex};
 
 pub type ChunkIndex = usize;
 pub type NodeIndex = usize;
 
 #[derive(Clone)]
 #[derive(Default)]
-pub struct Grid {
+pub struct Grid<NO: NodeT<ValueData>> {
     pub chunk_size: IVec2,
     pub nodes_per_chunk: usize,
     pub bits_for_nodes_per_chunk: u32,
     pub mask_for_node_per_chunk: u32,
 
     pub last_processed_node: Option<ChunkNodeIndex>,
-    pub chunks: Vec<Chunk>,
+    pub chunks: Vec<Chunk<NO>>,
     pub rules: Vec<Rule>,
 
     pub rng: Rng,
 }
 
 #[derive(Clone)]
-pub struct Chunk {
+pub struct Chunk<NO: NodeT<ValueData>> {
     pub pos: IVec2,
-    pub nodes: Vec<Node<ValueData>>,
+    pub nodes: Vec<NO>,
     pub render_data: Vec<NodeRenderData>
 }
 
@@ -41,7 +42,7 @@ pub struct ValueData {
     value_type: ValueType,
 }
 
-impl Grid {
+impl<NO: NodeT<ValueData>> Grid<NO> {
     pub fn new(chunk_size: usize) -> Self {
         let nodes_per_chunk = chunk_size * chunk_size;
         let bits_for_nodes_per_chunk = get_num_bits_for_number(nodes_per_chunk -1);
@@ -62,23 +63,20 @@ impl Grid {
     pub fn add_chunk(&mut self, pos: IVec2) {
         self.chunks.push(Chunk {
             pos,
-            nodes: repeat_with(|| Node::new(NUM_VALUES)).take(self.nodes_per_chunk).collect::<Vec<_>>(),
+            nodes: repeat_with(|| NO::new(NUM_VALUES)).take(self.nodes_per_chunk).collect::<Vec<_>>(),
             render_data: vec![NodeRenderData::default(); self.nodes_per_chunk]
         })
     }
 }
 
-impl NodeStorage<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex, ValueData> for Grid {
+impl<NO: NodeT<ValueData>> NodeStorageT<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex, NO, ValueData> for Grid<NO> {
     
     type Req = NeighborReq;
-    type ShuffleSeed = usize;
     
-    fn get_mut_node(&mut self, fast_lookup: ChunkNodeIndex) -> &mut Node<ValueData> {
+    fn get_mut_node(&mut self, fast_lookup: ChunkNodeIndex) -> &mut NO {
         &mut self.chunks[fast_lookup.chunk_index].nodes[fast_lookup.node_index]
     }
-
     
-
     fn get_num_reqs_for_value_data(&mut self, value_data: &ValueData) -> usize {
         self.rules[value_data.value_type as usize].neighbor_reqs.len()
     }
@@ -110,7 +108,7 @@ impl NodeStorage<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex, ValueData> for
     }
 
     fn select_value_from_slice(&mut self, fast: ChunkNodeIndex) -> ValueIndex {
-        let value_len = self.chunks[fast.chunk_index].nodes[fast.node_index].values.len();
+        let value_len = self.chunks[fast.chunk_index].nodes[fast.node_index].get_values().len();
         let value_index = self.rng.usize(0..value_len) as ValueIndex;
         
         value_index

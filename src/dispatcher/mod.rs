@@ -1,7 +1,7 @@
 pub mod vec_dispatcher;
 pub mod random_dispatcher;
 
-use crate::value::ValueNr;
+use crate::general_data_structure::ValueNr;
 
 pub trait Dispatcher<FastIdentifier>: Default + Clone {
     fn push_add(&mut self, fast_identifier: FastIdentifier, value_index: ValueNr);

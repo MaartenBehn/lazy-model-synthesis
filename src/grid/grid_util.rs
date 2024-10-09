@@ -1,13 +1,14 @@
 use octa_force::glam::{IVec2, ivec2};
+use crate::general_data_structure::node::NodeT;
+use crate::go_back_in_time::node::GoBackNode;
 use crate::grid::grid::{ChunkIndex, Grid, NodeIndex, ValueData};
 use crate::grid::identifier::{ChunkNodeIndex, GlobalPos};
-use crate::node::Node;
 
 pub fn mod_ivec2(v: IVec2, t: IVec2) -> IVec2 {
     IVec2::new(v.x % t.x, v.y % t.y)
 }
 
-impl Grid {
+impl<NO: NodeT<ValueData>> Grid<NO> {
 
     pub fn get_chunk_pos_from_global_pos(&self, pos: GlobalPos) -> IVec2 {
         pos.0 / self.chunk_size
@@ -49,7 +50,7 @@ impl Grid {
     }
 
 
-    pub fn get_mut_node_from_chunk_and_node_index(&mut self, chunk_index: ChunkIndex, node_index: NodeIndex) -> &mut Node<ValueData> {
+    pub fn get_mut_node_from_chunk_and_node_index(&mut self, chunk_index: ChunkIndex, node_index: NodeIndex) -> &mut NO {
         &mut self.chunks[chunk_index].nodes[node_index]
     }
 }

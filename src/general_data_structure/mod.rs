@@ -1,9 +1,11 @@
 pub mod req;
 pub mod req_by;
+pub mod identifier;
+pub mod node;
+pub mod node_storage;
 
-use crate::identifier::FastIdentifierT;
-use crate::value::req::{ReqIndex, ValueReq};
-use crate::value::req_by::{ReqByIndex, ValueReqBy};
+use crate::general_data_structure::req::{ReqIndex, ValueReq};
+use crate::general_data_structure::req_by::{ReqByIndex, ValueReqBy};
 
 
 pub type ValueNr = u32;
@@ -47,7 +49,7 @@ impl<VD> Value<VD> {
         self.reqs[req_index].on_add_req_by();
     }
     
-    /// Returns true if this value should be removed
+    /// Returns true if this general_data_structure should be removed
     pub fn on_remove_req_by(&mut self, req_index: ReqIndex) -> bool {
         self.reqs[req_index].on_remove_req_by()
     }

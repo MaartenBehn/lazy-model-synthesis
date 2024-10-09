@@ -1,7 +1,7 @@
-use crate::identifier::PackedIdentifierT;
 use crate::util::{get_mask_from_num_bits, get_num_bits_for_number};
-use crate::value::req::ReqIndex;
-use crate::value::ValueNr;
+use crate::general_data_structure::identifier::PackedIdentifierT;
+use crate::general_data_structure::req::ReqIndex;
+use crate::general_data_structure::ValueNr;
 
 pub type ReqByIndex = usize;
 

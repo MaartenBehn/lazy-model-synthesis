@@ -2,7 +2,7 @@
 pub type ReqCounterValue = i32;
 pub type ReqIndex = usize;
 
-// Remove value if there are:
+// Remove general_data_structure if there are:
 #[derive(Copy, Clone)]
 enum ReqOperation {
     NodeValueCounter,
@@ -50,7 +50,7 @@ impl ValueReq {
         }
     }
 
-    /// Returns true if the value of this req needs to be removed
+    /// Returns true if the general_data_structure of this req needs to be removed
     pub fn on_remove_req_by(&mut self) -> bool {
         match self.operation {
             ReqOperation::NodeValueCounter => {

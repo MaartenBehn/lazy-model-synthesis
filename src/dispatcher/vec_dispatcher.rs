@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use crate::dispatcher::Dispatcher;
-use crate::identifier::FastIdentifierT;
-use crate::value::ValueNr;
+use crate::general_data_structure::identifier::FastIdentifierT;
+use crate::general_data_structure::ValueNr;
 
 #[derive(Default, Clone)]
 pub struct VecDispatcher<FI: FastIdentifierT> {

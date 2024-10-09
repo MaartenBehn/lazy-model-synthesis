@@ -11,19 +11,21 @@ use octa_force::glam::{IVec2, vec2};
 use octa_force::vulkan::ash::vk::AttachmentLoadOp;
 use crate::grid::grid::{Grid, ValueData};
 use crate::dispatcher::random_dispatcher::RandomDispatcher;
+use crate::general_data_structure::node::NodeT;
+use crate::go_back_in_time::node::GoBackNode;
+use crate::go_back_in_time::node_manager::GoBackNodeManager;
 use crate::grid::rules::{get_example_rules, NUM_REQS, NUM_VALUES, ValueType};
 use crate::grid::identifier::{ChunkNodeIndex, GlobalPos, PackedChunkNodeIndex};
 use crate::grid::render::renderer::GridRenderer;
 use crate::LazyModelSynthesis;
-use crate::node_manager::NodeManager;
 
 const CHUNK_SIZE: usize = 1024;
 
-pub struct GridProfileVisulation {
+pub struct GridProfileGoBackVisulation {
     pub gui: Gui,
     
-    pub node_manager: NodeManager<
-        Grid,
+    pub node_manager: GoBackNodeManager<
+        Grid<GoBackNode<ValueData>>,
         RandomDispatcher<ChunkNodeIndex>,
         GlobalPos,
         ChunkNodeIndex,
@@ -38,7 +40,7 @@ pub struct GridProfileVisulation {
     run_ticks_per_frame: usize,
 }
 
-impl GridProfileVisulation {
+impl GridProfileGoBackVisulation {
     pub fn new(base: &mut BaseApp<LazyModelSynthesis>) -> Result<Self> {
 
         let mut gui = Gui::new(
@@ -51,7 +53,7 @@ impl GridProfileVisulation {
 
         let grid_renderer = GridRenderer::new(&mut base.context, &mut gui.renderer, base.num_frames, CHUNK_SIZE, 1)?;
 
-        Ok(GridProfileVisulation {
+        Ok(GridProfileGoBackVisulation {
             node_manager: Self::create_node_manager(),
             gui,
             grid_renderer,
@@ -60,8 +62,8 @@ impl GridProfileVisulation {
         })
     }
 
-    fn create_node_manager() -> NodeManager<
-        Grid,
+    fn create_node_manager() -> GoBackNodeManager<
+        Grid<GoBackNode<ValueData>>,
         RandomDispatcher<ChunkNodeIndex>,
         GlobalPos,
         ChunkNodeIndex,
@@ -73,7 +75,7 @@ impl GridProfileVisulation {
         grid.add_chunk(IVec2::ZERO);
         grid.rules = get_example_rules();
 
-        let mut node_manager = NodeManager::new(grid.clone(), NUM_VALUES, NUM_REQS);
+        let mut node_manager = GoBackNodeManager::new(grid.clone(), NUM_VALUES, NUM_REQS);
         node_manager.select_value(GlobalPos(IVec2::new(0, 0)), ValueData::new(ValueType::Stone));
 
         node_manager
