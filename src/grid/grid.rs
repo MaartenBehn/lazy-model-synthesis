@@ -72,8 +72,11 @@ impl<NO: NodeT<ValueData>> Grid<NO> {
 impl<NO: NodeT<ValueData>> NodeStorageT<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex, NO, ValueData> for Grid<NO> {
     
     type Req = NeighborReq;
-    
-    fn get_mut_node(&mut self, fast_lookup: ChunkNodeIndex) -> &mut NO {
+
+    fn get_node(&self, fast_lookup: ChunkNodeIndex) -> &NO {
+        &self.chunks[fast_lookup.chunk_index].nodes[fast_lookup.node_index]
+    }
+    fn get_node_mut(&mut self, fast_lookup: ChunkNodeIndex) -> &mut NO {
         &mut self.chunks[fast_lookup.chunk_index].nodes[fast_lookup.node_index]
     }
     

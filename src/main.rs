@@ -23,6 +23,7 @@ mod depth_search;
 const WIDTH: u32 = 1920; // 2200;
 const HEIGHT: u32 = 1080; // 1250;
 const APP_NAME: &str = "Lazy Model Synthesis";
+const START_IN: Visulation = Visulation::GridDepthDebug;
 
 enum Visulation {
     None,
@@ -70,7 +71,7 @@ impl App for LazyModelSynthesis {
             grid_debug_go_back_renderer,
             grid_profile_go_back_renderer,
             grid_debug_depth_renderer,
-            current_renderer: Visulation::None,
+            current_renderer: START_IN,
             gui,
         })
     }

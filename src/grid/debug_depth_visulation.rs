@@ -10,11 +10,12 @@ use octa_force::egui::FontFamily::Proportional;
 use octa_force::egui::panel::Side;
 use octa_force::egui::TextStyle::{Body, Button, Heading, Monospace, Small};
 use octa_force::egui_winit::winit::event::WindowEvent;
-use octa_force::glam::{IVec2, vec2, Vec2};
+use octa_force::glam::{IVec2, ivec2, vec2, Vec2};
 use octa_force::puffin_egui::puffin;
 use octa_force::vulkan::ash::vk::AttachmentLoadOp;
 use crate::depth_search::node::DepthNode;
 use crate::depth_search::node_manager::DepthNodeManager;
+use crate::dispatcher::Dispatcher;
 use crate::grid::grid::{Grid, ValueData};
 use crate::grid::identifier::{ChunkNodeIndex, GlobalPos, PackedChunkNodeIndex};
 use crate::dispatcher::random_dispatcher::RandomDispatcher;
@@ -25,10 +26,12 @@ use crate::grid::render::selector::Selector;
 use crate::grid::rules::{get_example_rules, NUM_REQS, NUM_VALUES, ValueType};
 use crate::LazyModelSynthesis;
 use crate::general_data_structure::identifier::IdentifierConverterT;
+use crate::general_data_structure::node_storage::NodeStorageT;
 use crate::util::state_saver::StateSaver;
-use crate::general_data_structure::ValueNr;
+use crate::general_data_structure::{ValueDataT, ValueNr};
 
 const CHUNK_SIZE: usize = 32;
+const DEBUG_MODE: bool = true;
 
 pub struct GridDebugDepthVisulation {
     pub gui: Gui,
@@ -101,7 +104,7 @@ impl GridDebugDepthVisulation {
             );
         }
         
-        if self.run {
+        if self.run || DEBUG_MODE {
             self.state_saver.set_next_tick(TickType::ForwardSave);
             for _ in 0..self.run_ticks_per_frame {
                 self.state_saver.tick();
@@ -112,12 +115,31 @@ impl GridDebugDepthVisulation {
         self.state_saver.set_next_tick(TickType::None);
         
         
-        self.selector.add_to_render_data(self.pointer_pos_in_grid, self.state_saver.get_state_mut().get_node_storage_mut());
+        if DEBUG_MODE {
+            let mut d = self.state_saver.get_state().dispatcher.clone();
+            if d.pop_add().is_none() && d.pop_remove().is_none() && d.pop_select().is_none() {
+                let gi = GlobalPos(ivec2(10, 10));
+                let fi = self.state_saver.get_state().node_storage.fast_from_general(gi);
+                let node = self.state_saver.get_state().node_storage.get_node(fi);
+                let v = &node.values[0];
+                let vt = ValueType::try_from_primitive(v.value_data.get_value_nr()).unwrap();
+                let next_vt = if vt == ValueType::Grass {
+                    ValueType::Stone
+                } else {
+                    ValueType::Grass
+                };
+                
+                self.state_saver.get_state_mut().select_value(gi, ValueData::new(next_vt));
+            }
+        }
+        
+        
+        self.selector.add_to_render_data(self.pointer_pos_in_grid, &mut self.state_saver.get_state_mut().node_storage);
 
-        self.grid_renderer.set_chunk_data(0, CHUNK_SIZE, &self.state_saver.get_state().get_node_storage().chunks[0].render_data);
+        self.grid_renderer.set_chunk_data(0, CHUNK_SIZE, &self.state_saver.get_state().node_storage.chunks[0].render_data);
         self.grid_renderer.update(&mut base.context, base.swapchain.format, frame_index);
 
-        self.selector.clear_from_render_data(self.state_saver.get_state_mut().get_node_storage_mut());
+        self.selector.clear_from_render_data(&mut self.state_saver.get_state_mut().node_storage);
         
         Ok(())
     }
@@ -239,10 +261,10 @@ impl GridDebugDepthVisulation {
                             ui.label(format!("Pos: [{:0>2} {:0>2}]", pos.x, pos.y));
                         });
 
-                        let chunk_node_index = self.state_saver.get_state_mut().get_node_storage_mut()
+                        let chunk_node_index = self.state_saver.get_state_mut().node_storage
                             .get_chunk_and_node_index_from_global_pos(GlobalPos(pos));
                         
-                        let data = self.state_saver.get_state().get_node_storage()
+                        let data = self.state_saver.get_state().node_storage
                             .chunks[chunk_node_index.chunk_index]
                             .render_data[chunk_node_index.node_index];
                         

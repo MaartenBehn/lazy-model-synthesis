@@ -4,16 +4,16 @@ use crate::general_data_structure::identifier::{FastIdentifierT, GeneralIdentifi
 use crate::general_data_structure::node::NodeT;
 
 
-#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq, Hash)]
 pub struct GlobalPos(pub IVec2);
 
-#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq, Hash)]
 pub struct ChunkNodeIndex {
     pub chunk_index: usize,
     pub node_index: usize,
 }
 
-#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq, Hash)]
 pub struct PackedChunkNodeIndex(pub u32);
 
 impl GeneralIdentifierT for GlobalPos {

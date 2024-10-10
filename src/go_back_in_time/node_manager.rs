@@ -62,7 +62,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
 
     pub fn select_value(&mut self, identifier: GI, value_data: VD) {
         let fast_identifier = self.current.fast_from_general(identifier);
-        let node = self.current.get_mut_node(fast_identifier);
+        let node = self.current.get_node_mut(fast_identifier);
         let value_nr = value_data.get_value_nr();
         
         // Check if node already had the general_data_structure once
@@ -94,7 +94,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
             info!("Go back in time to {history_index}");
             self.go_back_in_time(history_index as usize);
 
-            let node = self.current.get_mut_node(fast_identifier);
+            let node = self.current.get_node_mut(fast_identifier);
             let value_index = node.get_value_index_from_value_nr(value_nr).unwrap();
             self.perform_select(fast_identifier, value_index);
         }
@@ -108,7 +108,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
             let (packed_identifier, value_nr) = self.history.get_change(i);
             
             let fast_identifier = self.current.fast_from_packed(packed_identifier);
-            let node = self.current.get_mut_node(fast_identifier);
+            let node = self.current.get_node_mut(fast_identifier);
             
             let value_index = node.get_value_index_from_value_nr(value_nr);
             if value_index.is_err() {
@@ -158,7 +158,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
             
              */
 
-            let node = self.current.get_mut_node(fast_identifier);
+            let node = self.current.get_node_mut(fast_identifier);
             node.values.remove(value_index);
 
             if node.values.len() == 1 {
@@ -220,7 +220,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
         }
         
         // Get the value_data and general_data_structure nr of the general_data_structure that was added
-        let node = self.current.get_mut_node(fast_identifier);
+        let node = self.current.get_node_mut(fast_identifier);
         
         
         let value_index = node.get_value_index_from_value_nr(value_nr);
@@ -247,7 +247,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
             }
             
             // Add a Req of to the added general_data_structure
-            let node = self.current.get_mut_node(fast_identifier);
+            let node = self.current.get_node_mut(fast_identifier);
             let req_index = node.values[value_index].add_value_req(ValueReq::new_node_value_counter());
             
             let req_fast_identifier = self.current.fast_from_general(req_identifier);
@@ -259,7 +259,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
                 let req_value_nr = req_value_data.get_value_nr();
 
                 // Check if the node contains the general_data_structure that is required.
-                let req_node = self.current.get_mut_node(req_fast_identifier);
+                let req_node = self.current.get_node_mut(req_fast_identifier);
                 let req_value_index = req_node.get_value_index_from_value_nr(req_value_nr);
 
                 if req_value_index.is_err() {
@@ -274,7 +274,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
                     req_node.values[req_value_index].add_req_by(req_req_by);
 
                     // Call to mark that one other general_data_structure will reference this req
-                    let node = self.current.get_mut_node(fast_identifier);
+                    let node = self.current.get_node_mut(fast_identifier);
                     node.values[value_index].on_add_req_by(req_index);
 
                     // This neighbor node go a new general_data_structure so push it to be processed
@@ -291,7 +291,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
                     req_node.values[req_value_index.unwrap()].add_req_by(req_req_by);
 
                     // Call to mark that one other general_data_structure will reference this req
-                    let node = self.current.get_mut_node(fast_identifier);
+                    let node = self.current.get_node_mut(fast_identifier);
                     node.values[value_index].on_add_req_by(req_index);
                 }
             }
@@ -311,7 +311,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
         }
         
         // Get the general_data_structure and general_data_structure data of the general_data_structure that will be removed
-        let node = self.current.get_mut_node(fast_identifier);
+        let node = self.current.get_node_mut(fast_identifier);
         
         let value_index = node.get_value_index_from_value_nr(value_nr);
         let value_index = if DEBUG && value_index.is_err() {
@@ -330,7 +330,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
         for j in 0..req_by_len {
 
             // Get the req by
-            let node = self.current.get_mut_node(fast_identifier);
+            let node = self.current.get_node_mut(fast_identifier);
             let req_by = node.values[value_index].req_by[j];
 
             // Identify the req that is linked to this general_data_structure
@@ -338,7 +338,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
             let req_fast_identifier = self.current.fast_from_packed(req_packed_identifier);
 
             // Get the req node and find the general_data_structure
-            let req_node = self.current.get_mut_node(req_fast_identifier);
+            let req_node = self.current.get_node_mut(req_fast_identifier);
             let req_value_index = req_node.get_value_index_from_value_nr(req_value_nr);
             if req_value_index.is_err() {
                 // The req general_data_structure was already removed -> Skip
@@ -364,7 +364,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
         self.history.add_change(packed, value_nr);
 
         // Save the index of the history node marking the removal in the node of later resetting.
-        let node = self.current.get_mut_node(fast_identifier);
+        let node = self.current.get_node_mut(fast_identifier);
         node.last_removed[value_nr as usize] = self.last_remove_before_select;
 
         node.values.remove(value_index);
@@ -385,7 +385,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
             let identifier = self.current.general_from_fast(fast_identifier);
             info!("Select: {:?}", identifier);
             
-            let node = self.current.get_mut_node(fast_identifier);
+            let node = self.current.get_node_mut(fast_identifier);
             if node.selected {
                 let identifier = self.current.general_from_fast(fast_identifier);
                 warn!("Node {:?} already selected!", identifier);
@@ -405,13 +405,13 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
     
     fn perform_select(&mut self, fast_identifier: FI, value_index: ValueIndex) {
         if DEBUG {
-            let node = self.current.get_mut_node(fast_identifier);
+            let node = self.current.get_node_mut(fast_identifier);
             let value_data = node.values[value_index].value_data;
             let value_nr = value_data.get_value_nr();
             self.current.on_select_value_callback(fast_identifier, value_nr);
         }
 
-        let node = self.current.get_mut_node(fast_identifier);
+        let node = self.current.get_node_mut(fast_identifier);
         let req_by_len = node.values[value_index].req_by.len();
 
         // Swap the selected general_data_structure into first place 
@@ -429,14 +429,14 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
 
         for i in 0..req_by_len {
             // Get the req by
-            let node = self.current.get_mut_node(fast_identifier);
+            let node = self.current.get_node_mut(fast_identifier);
             let req_by = node.values[value_index].req_by[i];
 
             // Identify the req that is linked to this general_data_structure
             let (req_packed_identifier, req_value_nr, _) = self.req_by_packer.unpack::<PI>(req_by);
             let req_fast_identifier = self.current.fast_from_packed(req_packed_identifier);
 
-            let req_node = self.current.get_mut_node(req_fast_identifier);
+            let req_node = self.current.get_node_mut(req_fast_identifier);
             if req_node.selected {
                 continue;
             }

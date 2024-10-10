@@ -7,7 +7,8 @@ pub trait NodeStorageT<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: PackedId
 {
     type Req: Clone;
     
-    fn get_mut_node(&mut self, fast_lookup: FI) -> &mut NO;
+    fn get_node(&self, fast_lookup: FI) -> &NO;
+    fn get_node_mut(&mut self, fast_lookup: FI) -> &mut NO;
 
     fn get_num_reqs_for_value_data(&mut self, value_data: &VD) -> usize;
     fn get_req_for_value_data(&mut self, value_data: &VD, index: usize) -> Self::Req;

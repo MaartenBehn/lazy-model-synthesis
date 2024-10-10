@@ -1,19 +1,20 @@
 use std::fmt::Debug;
+use std::hash::Hash;
 
 /// A general identifier of the node.
 /// For example Vec2 for 2D grid.
-pub trait GeneralIdentifierT: Copy + Default + Debug + Eq {
+pub trait GeneralIdentifierT: Copy + Default + Debug + Eq + Hash {
     
 }
 
 /// An identifier for fast node access 
 /// For example (ChunkIndex, NodeIndex) for 2D Grid
-pub trait FastIdentifierT: Copy + Default + Debug + Eq {
+pub trait FastIdentifierT: Copy + Default + Debug + Eq + Hash {
     
 }
 
 /// An identifier that is packed to be stored in history
-pub trait PackedIdentifierT: Copy + Default + Debug + Eq {
+pub trait PackedIdentifierT: Copy + Default + Debug + Eq + Hash {
     fn to_bits(self) -> u32;
     fn from_bits(bits: u32) -> Self;
 }

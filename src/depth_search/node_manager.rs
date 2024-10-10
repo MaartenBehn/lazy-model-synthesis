@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use octa_force::log::{debug, error, info, warn};
 use octa_force::puffin_egui::puffin;
-use crate::depth_search::depth_tree::{DepthTreeController, DepthTreeNode, DepthTreeNodeReq};
+use crate::depth_search::depth_tree::{DepthTreeController, DepthTreeNode, IdentifierNodes, ReqAtIdentifier};
 use crate::depth_search::node::DepthNode;
 use crate::dispatcher::Dispatcher;
 use crate::go_back_in_time::history::History;
@@ -29,11 +29,11 @@ pub struct DepthNodeManager<N, D, GI, FI, PI, VD, const DEBUG: bool>
     phantom_data2: PhantomData<PI>,
     phantom_data4: PhantomData<VD>,
 
-    req_by_packer: ValueReqByPacker,
+    pub req_by_packer: ValueReqByPacker,
     
-    node_storage: N,
-    dispatcher: D,
-    depth_tree_controller: DepthTreeController<FI, VD>
+    pub node_storage: N,
+    pub dispatcher: D,
+    pub depth_tree_controller: DepthTreeController<FI, VD>
 }
 
 impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI, VD, DEBUG>
@@ -52,13 +52,10 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
             .. Default::default()
         }
     }
-    
-    pub fn get_node_storage(&self) -> &N { &self.node_storage }
-    pub fn get_node_storage_mut(&mut self) -> &mut N { &mut self.node_storage }
 
     pub fn select_value(&mut self, identifier: GI, value_data: VD) {
         let fast_identifier = self.node_storage.fast_from_general(identifier);
-        let node = self.node_storage.get_mut_node(fast_identifier);
+        let node = self.node_storage.get_node_mut(fast_identifier);
         let value_nr = value_data.get_value_nr();
         
         if node.values.is_empty() {
@@ -72,14 +69,12 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
                 self.node_storage.on_add_value_callback(fast_identifier, value_nr);
             }
         } else {
-            debug!("Depth Search")
-            
-            
-            
+            self.start_search(fast_identifier, value_data);
         }
     }
 
     pub fn start_search(&mut self, fast_identifier: FI, value_data: VD) {
+        self.depth_tree_controller.identifier_nodes.insert(fast_identifier, IdentifierNodes::new(vec![(value_data.get_value_nr(), 0)]));
         self.depth_tree_controller.nodes.push(DepthTreeNode::new(fast_identifier, value_data, 0));
         self.add_depth_children(0);
         
@@ -87,7 +82,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
     }
     
     pub fn add_depth_children(&mut self, index: usize) {
-        let depth_node = &mut self.depth_tree_controller.nodes[index];
+        let mut depth_node = self.depth_tree_controller.nodes[index].clone();
         let identifier = self.node_storage.general_from_fast(depth_node.fast_identifier);
         
         let num_reqs = self.node_storage.get_num_reqs_for_value_data(&depth_node.value_data);
@@ -104,34 +99,48 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
             
             let req_fast_identifier = self.node_storage.fast_from_general(req_identifier);
 
-            let mut depth_node_req = DepthTreeNodeReq{
+            let mut identifier_nodes = self.depth_tree_controller.identifier_nodes
+                .get(&req_fast_identifier)
+                .cloned()
+                .unwrap_or(IdentifierNodes {
+                    nodes: vec![],
+                });
+            
+            let mut depth_node_req = ReqAtIdentifier {
                 fast_identifier: req_fast_identifier,
-                reqs: vec![],
+                nodes: vec![],
             };
-
-            let req_node = self.get_node_storage().get_mut_node(req_fast_identifier);
 
             let num_possible_value_data = N::get_num_possible_value_data_for_req(&req);
             for req_value_data_index in 0..num_possible_value_data {
                 let req_value_data = N::get_value_data_for_req(&req, req_value_data_index);
                 let req_value_nr = req_value_data.get_value_nr();
-
-                let value_index = req_node.get_value_index_from_value_nr(req_value_nr);
                 
-                // Skip req if the node has the req.
-                if value_index.is_ok() {
-                    continue
-                }
-                
-                let req_index = self.depth_tree_controller.nodes.len();
-                self.depth_tree_controller.nodes.push(DepthTreeNode::new(req_fast_identifier, req_value_data, index));
+                let res = identifier_nodes.nodes
+                    .binary_search_by(|(nr, _)| {nr.cmp(&req_value_nr)});
 
-                depth_node_req.reqs.push((req_value_nr, req_index));
+                let req_index= if res.is_err() {
+                    let req_index = self.depth_tree_controller.nodes.len();
+
+                    // Value is new wo we add new node
+                    self.depth_tree_controller.nodes.push(DepthTreeNode::new(req_fast_identifier, req_value_data, index));
+                    // And mark it the identifier_node
+                    identifier_nodes.nodes.insert(res.unwrap_err(), (req_value_nr, req_index));
+                    
+                    req_index
+                } else {
+                    identifier_nodes.nodes[res.unwrap()].1
+                };
+                
+                depth_node_req.nodes.push((req_value_nr, req_index));
             }
-
-            let depth_node = &mut self.depth_tree_controller.nodes[index];
+            
             depth_node.reqs.push(depth_node_req);
+            
+            self.depth_tree_controller.identifier_nodes.insert(req_fast_identifier, identifier_nodes);
         }
+
+        self.depth_tree_controller.nodes[index] = depth_node;
     }
     
     pub fn tick(&mut self) -> bool {
@@ -177,7 +186,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
         }
         
         // Get the value_data and general_data_structure nr of the general_data_structure that was added
-        let node = self.node_storage.get_mut_node(fast_identifier);
+        let node = self.node_storage.get_node_mut(fast_identifier);
         
         
         let value_index = node.get_value_index_from_value_nr(value_nr);
@@ -204,7 +213,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
             }
             
             // Add a Req of to the added general_data_structure
-            let node = self.node_storage.get_mut_node(fast_identifier);
+            let node = self.node_storage.get_node_mut(fast_identifier);
             let req_index = node.values[value_index].add_value_req(ValueReq::new_node_value_counter());
             
             let req_fast_identifier = self.node_storage.fast_from_general(req_identifier);
@@ -216,7 +225,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
                 let req_value_nr = req_value_data.get_value_nr();
 
                 // Check if the node contains the general_data_structure that is required.
-                let req_node = self.node_storage.get_mut_node(req_fast_identifier);
+                let req_node = self.node_storage.get_node_mut(req_fast_identifier);
                 let req_value_index = req_node.get_value_index_from_value_nr(req_value_nr);
 
                 if req_value_index.is_err() {
@@ -231,7 +240,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
                     req_node.values[req_value_index].add_req_by(req_req_by);
 
                     // Call to mark that one other general_data_structure will reference this req
-                    let node = self.node_storage.get_mut_node(fast_identifier);
+                    let node = self.node_storage.get_node_mut(fast_identifier);
                     node.values[value_index].on_add_req_by(req_index);
 
                     // This neighbor node go a new general_data_structure so push it to be processed
@@ -248,7 +257,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
                     req_node.values[req_value_index.unwrap()].add_req_by(req_req_by);
 
                     // Call to mark that one other general_data_structure will reference this req
-                    let node = self.node_storage.get_mut_node(fast_identifier);
+                    let node = self.node_storage.get_node_mut(fast_identifier);
                     node.values[value_index].on_add_req_by(req_index);
                 }
             }
@@ -268,7 +277,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
         }
         
         // Get the general_data_structure and general_data_structure data of the general_data_structure that will be removed
-        let node = self.node_storage.get_mut_node(fast_identifier);
+        let node = self.node_storage.get_node_mut(fast_identifier);
         
         let value_index = node.get_value_index_from_value_nr(value_nr);
         let value_index = if DEBUG && value_index.is_err() {
@@ -286,7 +295,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
         for j in 0..req_by_len {
 
             // Get the req by
-            let node = self.node_storage.get_mut_node(fast_identifier);
+            let node = self.node_storage.get_node_mut(fast_identifier);
             let req_by = node.values[value_index].req_by[j];
 
             // Identify the req that is linked to this general_data_structure
@@ -294,7 +303,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
             let req_fast_identifier = self.node_storage.fast_from_packed(req_packed_identifier);
 
             // Get the req node and find the general_data_structure
-            let req_node = self.node_storage.get_mut_node(req_fast_identifier);
+            let req_node = self.node_storage.get_node_mut(req_fast_identifier);
             let req_value_index = req_node.get_value_index_from_value_nr(req_value_nr);
             if req_value_index.is_err() {
                 // The req general_data_structure was already removed -> Skip
@@ -313,7 +322,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
             }
         }
 
-        let node = self.node_storage.get_mut_node(fast_identifier);
+        let node = self.node_storage.get_node_mut(fast_identifier);
         node.values.remove(value_index);
 
         if node.values.len() <= 1 {
@@ -343,13 +352,13 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
         
         
         if DEBUG {
-            let node = self.node_storage.get_mut_node(fast_identifier);
+            let node = self.node_storage.get_node_mut(fast_identifier);
             let value_data = node.values[value_index].value_data;
             let value_nr = value_data.get_value_nr();
             self.node_storage.on_select_value_callback(fast_identifier, value_nr);
         }
 
-        let node = self.node_storage.get_mut_node(fast_identifier);
+        let node = self.node_storage.get_node_mut(fast_identifier);
         let req_by_len = node.values[value_index].req_by.len();
 
         // Swap the selected general_data_structure into first place 
@@ -365,14 +374,14 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
 
         for i in 0..req_by_len {
             // Get the req by
-            let node = self.node_storage.get_mut_node(fast_identifier);
+            let node = self.node_storage.get_node_mut(fast_identifier);
             let req_by = node.values[value_index].req_by[i];
 
             // Identify the req that is linked to this value
             let (req_packed_identifier, req_value_nr, _) = self.req_by_packer.unpack::<PI>(req_by);
             let req_fast_identifier = self.node_storage.fast_from_packed(req_packed_identifier);
 
-            let req_node = self.node_storage.get_mut_node(req_fast_identifier);
+            let req_node = self.node_storage.get_node_mut(req_fast_identifier);
             if req_node.values.len() <= 1 {
                 continue;
             }
