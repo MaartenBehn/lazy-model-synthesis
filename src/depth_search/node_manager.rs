@@ -33,7 +33,7 @@ pub struct DepthNodeManager<N, D, GI, FI, PI, VD, const DEBUG: bool>
     
     node_storage: N,
     dispatcher: D,
-    depth_tree_controller: DepthTreeController<FI>
+    depth_tree_controller: DepthTreeController<FI, VD>
 }
 
 impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI, VD, DEBUG>
