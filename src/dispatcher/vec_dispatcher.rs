@@ -7,7 +7,7 @@ use crate::general_data_structure::ValueNr;
 pub struct VecDispatcher<FI: FastIdentifierT> {
     add: VecDeque<(FI, ValueNr)>,
     remove: VecDeque<(FI, ValueNr)>,
-    select: VecDeque<FI>,
+    select: VecDeque<(FI, ValueNr)>,
 }
 
 impl<FI: FastIdentifierT> Dispatcher<FI> for VecDispatcher<FI> {
@@ -27,17 +27,17 @@ impl<FI: FastIdentifierT> Dispatcher<FI> for VecDispatcher<FI> {
         self.remove.pop_front()
     }
 
-    fn push_select(&mut self, fast_identifier: FI) {
-        self.select.push_back(fast_identifier)
+    fn push_select(&mut self, fast_identifier: FI, value_nr: ValueNr) {
+        self.select.push_back((fast_identifier, value_nr))
     }
 
-    fn pop_select(&mut self) -> Option<FI> {
+    fn pop_select(&mut self) -> Option<(FI, ValueNr)> {
         self.select.pop_front()
     }
 
-    fn select_contains_node(&mut self, fast_identifier: FI) -> bool {
-        self.select.iter().find(|i| {
-            **i == fast_identifier
+    fn select_contains_node(&mut self, fast_identifier: FI, value_nr: ValueNr) -> bool {
+        self.select.iter().find(|(i, v)| {
+            *i == fast_identifier && *v == value_nr
         }).is_some()
     }
 }

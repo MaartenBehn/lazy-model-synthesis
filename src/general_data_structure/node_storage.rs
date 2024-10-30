@@ -34,8 +34,12 @@ pub trait NodeStorageT<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: PackedId
     fn on_pop_add_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
     fn on_push_remove_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
     fn on_pop_remove_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
-    fn on_push_select_queue_callback(&mut self, fast: FI);
-    fn on_pop_select_queue_callback(&mut self, fast: FI);
+    fn on_push_select_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
+    fn on_pop_select_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
+
+    fn on_add_depth_tree_identifier_callback(&mut self, fast: FI);
+
+    fn on_remove_depth_tree_identifier_callback(&mut self, fast: FI);
 
     fn next_processed_node(&mut self, fast: Option<FI>);
 }

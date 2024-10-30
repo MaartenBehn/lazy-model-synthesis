@@ -146,12 +146,20 @@ impl<NO: NodeT<ValueData>> NodeStorageT<GlobalPos, ChunkNodeIndex, PackedChunkNo
         self.chunks[fast.chunk_index].render_data[fast.node_index].set_remove_queue(value_nr, false);
     }
 
-    fn on_push_select_queue_callback(&mut self, fast: ChunkNodeIndex) {
-        self.chunks[fast.chunk_index].render_data[fast.node_index].set_select_queue(true);
+    fn on_push_select_queue_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_select_queue(value_nr, true);
     }
 
-    fn on_pop_select_queue_callback(&mut self, fast: ChunkNodeIndex) {
-        self.chunks[fast.chunk_index].render_data[fast.node_index].set_select_queue(false);
+    fn on_pop_select_queue_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_select_queue(value_nr, false);
+    }
+
+    fn on_add_depth_tree_identifier_callback(&mut self, fast: ChunkNodeIndex) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_depth_tree_identifier(true);
+    }
+
+    fn on_remove_depth_tree_identifier_callback(&mut self, fast: ChunkNodeIndex) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_depth_tree_identifier(false);
     }
 
     fn next_processed_node(&mut self, fast: Option<ChunkNodeIndex>) {
@@ -170,6 +178,8 @@ impl<NO: NodeT<ValueData>> NodeStorageT<GlobalPos, ChunkNodeIndex, PackedChunkNo
 
     }
 }
+
+
 
 impl ValueData {
     pub fn new(value_type: ValueType) -> ValueData {

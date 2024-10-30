@@ -61,11 +61,11 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
         if node.values.is_empty() {
             node.add_value_with_index(0, value_data);
             self.dispatcher.push_add(fast_identifier, value_nr);
-            self.dispatcher.push_select(fast_identifier);
+            self.dispatcher.push_select(fast_identifier, value_nr);
 
             if DEBUG {
                 self.node_storage.on_push_add_queue_callback(fast_identifier, value_nr);
-                self.node_storage.on_push_select_queue_callback(fast_identifier);
+                self.node_storage.on_push_select_queue_callback(fast_identifier, value_nr);
                 self.node_storage.on_add_value_callback(fast_identifier, value_nr);
             }
         } else {
@@ -75,6 +75,11 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
 
     pub fn start_search(&mut self, fast_identifier: FI, value_data: VD) {
         self.depth_tree_controller.identifier_nodes.insert(fast_identifier, IdentifierNodes::new(vec![(value_data.get_value_nr(), 0)]));
+        
+        if DEBUG {
+            self.node_storage.on_add_depth_tree_identifier_callback(fast_identifier);
+        }
+        
         self.depth_tree_controller.nodes.push(DepthTreeNode::new(fast_identifier, value_data, 0));
         self.add_depth_children(0);
         
@@ -154,8 +159,8 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
         } else if let Some((fast_identifier, value_nr)) = self.dispatcher.pop_remove() {
             self.remove_tick(fast_identifier, value_nr);
             true
-        } else if let Some(fast_identifier) = self.dispatcher.pop_select() {
-            self.select_tick(fast_identifier);
+        } else if let Some((fast_identifier, value_nr)) = self.dispatcher.pop_select() {
+            self.select_tick(fast_identifier, value_nr);
             true
         } else {
             false
@@ -336,13 +341,13 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
         }
     }
 
-    fn select_tick(&mut self, fast_identifier: FI) {
+    fn select_tick(&mut self, fast_identifier: FI, value_nr: ValueNr) {
         if cfg!(debug_assertions) {
             puffin::profile_function!();
         }
         
         if DEBUG {
-            self.node_storage.on_pop_select_queue_callback(fast_identifier);
+            self.node_storage.on_pop_select_queue_callback(fast_identifier, value_nr);
 
             let identifier = self.node_storage.general_from_fast(fast_identifier);
             info!("Select: {:?}", identifier);
@@ -386,20 +391,16 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
                 continue;
             }
 
-            if self.dispatcher.select_contains_node(req_fast_identifier) {
+            if self.dispatcher.select_contains_node(req_fast_identifier, value_nr) {
                 continue;
             }
 
-            self.dispatcher.push_select(req_fast_identifier);
+            self.dispatcher.push_select(req_fast_identifier, value_nr);
 
             if DEBUG {
-                self.node_storage.on_push_select_queue_callback(req_fast_identifier);
+                self.node_storage.on_push_select_queue_callback(req_fast_identifier, value_nr);
             }
         }
-    }
-    
-    fn perform_select() {
-        
     }
     
     /// For Debugging 
@@ -411,7 +412,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
             self.node_storage.next_processed_node(Some(fast_identifier));
         } else if let Some((fast_identifier, _)) = dispatcher.pop_remove() {
             self.node_storage.next_processed_node(Some(fast_identifier));
-        } else if let Some(fast_identifier) = dispatcher.pop_select() {
+        } else if let Some((fast_identifier, _)) = dispatcher.pop_select() {
             self.node_storage.next_processed_node(Some(fast_identifier));
         } else {
             self.node_storage.next_processed_node(None);

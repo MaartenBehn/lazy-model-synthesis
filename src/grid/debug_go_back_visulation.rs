@@ -250,8 +250,8 @@ impl GridDebugGoBackVisulation {
                             
                             let added = data.get_value_type(value_nr);
                             let add_queue = data.get_add_queue(value_nr);
-                            let propergate_queue = data.get_remove_queue(value_nr);
-                            let reset_queue = data.get_select_queue();
+                            let propagate_queue = data.get_remove_queue(value_nr);
+                            let select_queue = data.get_select_queue(value_nr);
                             
                             div(ui, |ui| {
                                 ui.label(
@@ -260,8 +260,8 @@ impl GridDebugGoBackVisulation {
                                         if added {"x"} else {"   "},
                                         ValueType::try_from_primitive(i).unwrap(),
                                         if add_queue {"A"} else {"   "},
-                                        if propergate_queue {"R"} else {"   "},
-                                        if reset_queue {"S"} else {"   "},
+                                        if propagate_queue {"R"} else {"   "},
+                                        if select_queue {"S"} else {"   "},
                                     ));
                             });
 

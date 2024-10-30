@@ -115,7 +115,9 @@ impl GridDebugDepthVisulation {
         self.state_saver.set_next_tick(TickType::None);
         
         
+        
         if DEBUG_MODE {
+            // Place one automatic at the start
             let mut d = self.state_saver.get_state().dispatcher.clone();
             if d.pop_add().is_none() && d.pop_remove().is_none() && d.pop_select().is_none() {
                 let gi = GlobalPos(ivec2(10, 10));
@@ -273,8 +275,8 @@ impl GridDebugDepthVisulation {
                             
                             let added = data.get_value_type(value_nr);
                             let add_queue = data.get_add_queue(value_nr);
-                            let propergate_queue = data.get_remove_queue(value_nr);
-                            let reset_queue = data.get_select_queue();
+                            let propagate_queue = data.get_remove_queue(value_nr);
+                            let select_queue = data.get_select_queue(value_nr);
                             
                             div(ui, |ui| {
                                 ui.label(
@@ -283,8 +285,8 @@ impl GridDebugDepthVisulation {
                                         if added {"x"} else {"   "},
                                         ValueType::try_from_primitive(i).unwrap(),
                                         if add_queue {"A"} else {"   "},
-                                        if propergate_queue {"R"} else {"   "},
-                                        if reset_queue {"S"} else {"   "},
+                                        if propagate_queue {"R"} else {"   "},
+                                        if select_queue {"S"} else {"   "},
                                     ));
                             });
 

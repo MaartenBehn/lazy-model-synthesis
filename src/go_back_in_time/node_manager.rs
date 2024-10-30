@@ -83,20 +83,18 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
                 }
             }
 
-            self.dispatcher.push_select(fast_identifier);
+            self.dispatcher.push_select(fast_identifier, value_nr);
 
             if DEBUG {   // For debugging
-                self.current.on_push_select_queue_callback(fast_identifier);
+                self.current.on_push_select_queue_callback(fast_identifier, value_nr);
             }
         } else {
             // The node already had the general_data_structure once -> Reset world to earlier state
             
             info!("Go back in time to {history_index}");
             self.go_back_in_time(history_index as usize);
-
-            let node = self.current.get_node_mut(fast_identifier);
-            let value_index = node.get_value_index_from_value_nr(value_nr).unwrap();
-            self.perform_select(fast_identifier, value_index);
+            
+            self.perform_select(fast_identifier, value_nr);
         }
     }
 
@@ -188,8 +186,8 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
         } else if let Some((fast_identifier, value_nr)) = self.dispatcher.pop_remove() {
             self.remove_tick(fast_identifier, value_nr);
             true
-        } else if let Some(fast_identifier) = self.dispatcher.pop_select() {
-            self.select_tick(fast_identifier);
+        } else if let Some((fast_identifier, value_nr)) = self.dispatcher.pop_select() {
+            self.select_tick(fast_identifier, value_nr);
             true
         } else {
             false
@@ -374,13 +372,13 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
         }
     }
 
-    fn select_tick(&mut self, fast_identifier: FI) {
+    fn select_tick(&mut self, fast_identifier: FI, value_nr: ValueNr) {
         if cfg!(debug_assertions) {
             puffin::profile_function!();
         }
         
         if DEBUG {
-            self.current.on_pop_select_queue_callback(fast_identifier);
+            self.current.on_pop_select_queue_callback(fast_identifier, value_nr);
 
             let identifier = self.current.general_from_fast(fast_identifier);
             info!("Select: {:?}", identifier);
@@ -398,12 +396,17 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
             self.first_remove = false;
         }
         
-        let value_index = self.current.select_value_from_slice(fast_identifier);
-
-        self.perform_select(fast_identifier, value_index);
+        self.perform_select(fast_identifier, value_nr);
     }
     
-    fn perform_select(&mut self, fast_identifier: FI, value_index: ValueIndex) {
+    fn perform_select(&mut self, fast_identifier: FI, value_nr: ValueNr) {
+        let node = self.current.get_node_mut(fast_identifier);
+        let res = node.get_value_index_from_value_nr(value_nr);
+        if res.is_err() {
+            return;
+        }
+        let value_index = res.unwrap();
+        
         if DEBUG {
             let node = self.current.get_node_mut(fast_identifier);
             let value_data = node.values[value_index].value_data;
@@ -440,15 +443,19 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
             if req_node.selected {
                 continue;
             }
+            
+            let select_value_index = self.current.select_value_from_slice(req_fast_identifier);
+            let req_node = self.current.get_node_mut(req_fast_identifier);
+            let select_value_nr = req_node.values[select_value_index].value_data.get_value_nr();
 
-            if self.dispatcher.select_contains_node(req_fast_identifier) {
+            if self.dispatcher.select_contains_node(req_fast_identifier, select_value_nr) {
                 continue;
             }
 
-            self.dispatcher.push_select(req_fast_identifier);
+            self.dispatcher.push_select(req_fast_identifier, select_value_nr);
 
             if DEBUG {
-                self.current.on_push_select_queue_callback(req_fast_identifier);
+                self.current.on_push_select_queue_callback(req_fast_identifier, select_value_nr);
             }
         }
     }
@@ -462,7 +469,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
             self.current.next_processed_node(Some(fast_identifier));
         } else if let Some((fast_identifier, _)) = dispatcher.pop_remove() {
             self.current.next_processed_node(Some(fast_identifier));
-        } else if let Some(fast_identifier) = dispatcher.pop_select() {
+        } else if let Some((fast_identifier, _)) = dispatcher.pop_select() {
             self.current.next_processed_node(Some(fast_identifier));
         } else {
             self.current.next_processed_node(None);

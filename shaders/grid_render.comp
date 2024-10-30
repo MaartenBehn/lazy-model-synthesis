@@ -6,15 +6,16 @@ vec4 rgb(uint r, uint g, uint b) {
 
 #define SELECTOR_BIT 31
 #define NEXT_BIT 30
-#define SELECT_QUEUE_BIT 29
+#define HAS_TREE_IDENTIFIER_BIT 29
 
 #define SELECTED_VALUE_BITS 4
 #define SELECTED_VALUE_MASK uint(pow(2, SELECTED_VALUE_BITS) - 1)
-#define BITS_PER_VALUE 3
+#define BITS_PER_VALUE 4
 
 #define ADDED_OFFSET 0
-#define ADD_OFFSET 1
-#define REMOVE_OFFSET 2
+#define SELECT_OFFSET 1
+#define ADD_OFFSET 2
+#define REMOVE_OFFSET 3
 
 #define STONE_INDEX 0
 #define GRASS_INDEX 1
@@ -22,6 +23,7 @@ vec4 rgb(uint r, uint g, uint b) {
 
 #define SELECTOR_COLOR rgb(255, 255, 255)
 #define NEXT_COLOR rgb(255, 121, 0)
+#define HAS_TREE_IDENTIFIER_COLOR rgb(255, 255, 0)
 
 #define ADD_COLOR rgb(0, 53, 218)
 #define REMOVE_COLOR rgb(133, 23, 152)
@@ -54,17 +56,17 @@ layout(binding = 2) buffer ChunkBuffer {
 
 
 vec4 node_color(uint data) {
-  uint node_index = data & (SELECTED_VALUE_MASK);
+  uint data_index = data & (SELECTED_VALUE_MASK);
 
-  if (node_index == STONE_INDEX + 1) {
+  if (data_index == STONE_INDEX + 1) {
     return STONE_COLOR;
   }
 
-  if (node_index == GRASS_INDEX + 1) {
+  if (data_index == GRASS_INDEX + 1) {
     return GRASS_COLOR;
   }
 
-  if (node_index == SAND_INDEX + 1) {
+  if (data_index == SAND_INDEX + 1) {
     return SAND_COLOR;
   }
 
@@ -96,40 +98,53 @@ vec4 debug_color(uint data, vec2 v, vec4 color) {
     return NEXT_COLOR;
   }
 
-
-
-  if (value_bit_set(data, STONE_INDEX, ADD_OFFSET) && in_inner_rect(v, vec2(0.0, 0.0), vec2(RECT_SIZE, RECT_SIZE))) {
-    return ADD_COLOR;
+  if (bit_set(data, HAS_TREE_IDENTIFIER_BIT) && in_inner_rect(v, vec2(0.0, RECT_SIZE * 4), vec2(RECT_SIZE, RECT_SIZE * 5))) {
+    return HAS_TREE_IDENTIFIER_COLOR;
   }
 
-  if (value_bit_set(data, GRASS_INDEX, ADD_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE, 0.0), vec2(RECT_SIZE * 2, RECT_SIZE))) {
-    return ADD_COLOR;
+  // Marker if Value is in remove Queue
+  if (value_bit_set(data, STONE_INDEX, SELECT_OFFSET) && in_inner_rect(v, vec2(0.0, 0.0), vec2(RECT_SIZE, RECT_SIZE))) {
+    return SELECT_COLOR;
   }
 
-  if (value_bit_set(data, SAND_INDEX, ADD_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE * 2, 0.0), vec2(RECT_SIZE * 3, RECT_SIZE))) {
-    return ADD_COLOR;
+  if (value_bit_set(data, GRASS_INDEX, SELECT_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE, 0.0), vec2(RECT_SIZE * 2, RECT_SIZE))) {
+    return SELECT_COLOR;
   }
 
-
-
-  if (value_bit_set(data, STONE_INDEX, REMOVE_OFFSET) && in_inner_rect(v, vec2(0.0, RECT_SIZE), vec2(RECT_SIZE, RECT_SIZE * 2))) {
-    return REMOVE_COLOR;
-  }
-
-  if (value_bit_set(data, GRASS_INDEX, REMOVE_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE, RECT_SIZE), vec2(RECT_SIZE * 2, RECT_SIZE * 2))) {
-    return REMOVE_COLOR;
-  }
-
-  if (value_bit_set(data, SAND_INDEX, REMOVE_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE * 2, RECT_SIZE), vec2(RECT_SIZE * 3, RECT_SIZE * 2))) {
-    return REMOVE_COLOR;
-  }
-  
-
-  if (bit_set(data, SELECT_QUEUE_BIT) && in_inner_rect(v, vec2(0.0, RECT_SIZE * 2), vec2(RECT_SIZE * 3, RECT_SIZE * 3))) {
+  if (value_bit_set(data, SAND_INDEX, SELECT_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE * 2, 0.0), vec2(RECT_SIZE * 3, RECT_SIZE))) {
     return SELECT_COLOR;
   }
 
 
+  // Marker if Value is in add Queue
+  if (value_bit_set(data, STONE_INDEX, ADD_OFFSET) && in_inner_rect(v, vec2(0.0, RECT_SIZE), vec2(RECT_SIZE, RECT_SIZE * 2))) {
+    return ADD_COLOR;
+  }
+
+  if (value_bit_set(data, GRASS_INDEX, ADD_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE, RECT_SIZE), vec2(RECT_SIZE * 2, RECT_SIZE * 2))) {
+    return ADD_COLOR;
+  }
+
+  if (value_bit_set(data, SAND_INDEX, ADD_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE * 2, RECT_SIZE), vec2(RECT_SIZE * 3, RECT_SIZE * 2))) {
+    return ADD_COLOR;
+  }
+
+
+  // Marker if Value is in remove Queue
+  if (value_bit_set(data, STONE_INDEX, REMOVE_OFFSET) && in_inner_rect(v, vec2(0.0, RECT_SIZE * 2), vec2(RECT_SIZE, RECT_SIZE * 3))) {
+    return REMOVE_COLOR;
+  }
+
+  if (value_bit_set(data, GRASS_INDEX, REMOVE_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE, RECT_SIZE * 2), vec2(RECT_SIZE * 2, RECT_SIZE * 3))) {
+    return REMOVE_COLOR;
+  }
+
+  if (value_bit_set(data, SAND_INDEX, REMOVE_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE * 2, RECT_SIZE * 2), vec2(RECT_SIZE * 3, RECT_SIZE * 3))) {
+    return REMOVE_COLOR;
+  }
+
+
+  // Marker which value is possible for node
   if (value_bit_set(data, STONE_INDEX, ADDED_OFFSET) && in_inner_rect(v, vec2(0.0, RECT_SIZE * 4), vec2(RECT_SIZE, RECT_SIZE * 5))) {
     return STONE_COLOR;
   }
@@ -141,12 +156,6 @@ vec4 debug_color(uint data, vec2 v, vec4 color) {
   if (value_bit_set(data, SAND_INDEX, ADDED_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE * 2, RECT_SIZE * 4), vec2(RECT_SIZE * 3, RECT_SIZE * 5))) {
     return SAND_COLOR;
   }
-
-  /*
-  if (in_inner_rect(v, vec2(0.0, RECT_SIZE * 4), vec2(RECT_SIZE * 3, RECT_SIZE * 5))) {
-    return rgb(27, 27, 27);
-  }
-  */
 
   return color;
 }
