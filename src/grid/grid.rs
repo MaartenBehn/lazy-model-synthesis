@@ -39,7 +39,7 @@ pub struct Chunk<NO: NodeT<ValueData>> {
 
 #[derive(Default, Copy, Clone)]
 pub struct ValueData {
-    value_type: ValueType,
+    pub value_type: ValueType,
 }
 
 impl<NO: NodeT<ValueData>> Grid<NO> {

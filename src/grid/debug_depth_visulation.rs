@@ -53,7 +53,8 @@ pub struct GridDebugDepthVisulation {
 
     run: bool,
     run_ticks_per_frame: usize,
-    pointer_pos_in_grid: Option<Vec2>
+    pointer_pos_in_grid: Option<Vec2>,
+    performed_select: bool,
 }
 
 impl GridDebugDepthVisulation {
@@ -87,6 +88,7 @@ impl GridDebugDepthVisulation {
             run: false,
             run_ticks_per_frame: 10,
             pointer_pos_in_grid: None,
+            performed_select: false,
         })
     }
 
@@ -116,7 +118,7 @@ impl GridDebugDepthVisulation {
         
         
         
-        if DEBUG_MODE {
+        if DEBUG_MODE && !self.performed_select {
             // Place one automatic at the start
             let mut d = self.state_saver.get_state().dispatcher.clone();
             if d.pop_add().is_none() && d.pop_remove().is_none() && d.pop_select().is_none() {
@@ -132,9 +134,10 @@ impl GridDebugDepthVisulation {
                 };
                 
                 self.state_saver.get_state_mut().select_value(gi, ValueData::new(next_vt));
+
+                self.performed_select = true;
             }
         }
-        
         
         self.selector.add_to_render_data(self.pointer_pos_in_grid, &mut self.state_saver.get_state_mut().node_storage);
 
@@ -289,14 +292,82 @@ impl GridDebugDepthVisulation {
                                         if select_queue {"S"} else {"   "},
                                     ));
                             });
+                        }
 
+                        let tree_identifier_node = self.state_saver
+                            .get_state_mut()
+                            .depth_tree_controller
+                            .identifier_nodes
+                            .get(&chunk_node_index);
+                        
+                        if tree_identifier_node.is_some() {
+                            let tree_identifier_node = tree_identifier_node.unwrap();
 
+                            ui.label("Tree Identifier Node:");
+
+                            for (value_nr, tree_index) in tree_identifier_node.nodes.iter() {
+                                let value_type = ValueType::try_from_primitive(*value_nr).unwrap();
+                                ui.label(format!("{value_type:?} at Tree Index {tree_index}"));
+                            }
                         }
                         
                     } else {
                         div(ui, |ui| {
                             ui.label("Out of bounds");
                         });
+                    }
+                });
+            });
+
+            egui::SidePanel::new(Side::Right, Id::new("Side Panel 2")).show(ctx, |ui| {
+                puffin::profile_scope!("Search Tree");
+                
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    ui.set_min_width(200.0);
+
+                    let grid = &self.state_saver.get_state().node_storage;
+                    let depth_tree_controller = &self.state_saver.get_state().depth_tree_controller;
+                    
+                    let tree_identifiers = if self.selector.last_selected.is_some() {
+                        let fast_identifier = grid.fast_from_general(GlobalPos(self.selector.last_selected.unwrap()));
+                        let node = &depth_tree_controller.identifier_nodes.get(&fast_identifier);
+                        if node.is_some() {
+                            let node = node.unwrap();
+                            node.nodes.to_owned()
+                        } else {
+                            vec![]
+                        }
+                    } else {
+                        vec![]
+                    };
+                    
+                    for (i, node) in depth_tree_controller.nodes.iter().enumerate() {
+                        ui.separator();
+                        
+                        let selected = tree_identifiers.iter().find(|(_, test_i)| i == *test_i).is_some();
+                        
+                        let pos = grid.general_from_fast(node.fast_identifier);
+                        if selected {
+                            ui.heading(RichText::new(format!(">>> Node: {i}")).strong());
+                        } else {
+                            ui.heading(format!("Node: {i}"));
+                        }
+                        
+                        ui.label(format!("Pos: [{},{}]", pos.0.x, pos.0.y));
+                        ui.label(format!("Value: {:?}", node.value_data.value_type));
+                        ui.label(format!("Level: {}", node.level));
+                        ui.label("Reqs:");
+
+                        for req in node.reqs.iter() {
+                            ui.separator();
+                            
+                            let req_pos = grid.general_from_fast(req.fast_identifier);
+                            ui.label(format!("ReqPos: [{},{}]", req_pos.0.x, req_pos.0.y));
+                            for (req_value_nr, tree_index) in req.nodes.iter() {
+                                let value_type = ValueType::try_from_primitive(*req_value_nr).unwrap();
+                                ui.label(format!("{value_type:?} at Tree Index {tree_index}"));
+                            }
+                        }
                     }
                 });
             });
@@ -345,5 +416,11 @@ fn egui_vec2_to_glam_vec2(v: egui::Vec2) -> glam::Vec2 {
 fn div(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui)) {
     Frame::none().show(ui, |ui| {
         ui.with_layout(Layout::left_to_right(Align::TOP), add_contents);
+    });
+}
+
+fn div_vert(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui)) {
+    Frame::none().show(ui, |ui| {
+        ui.with_layout(Layout::top_down(Align::LEFT), add_contents);
     });
 }

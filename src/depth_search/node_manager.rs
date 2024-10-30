@@ -81,12 +81,11 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
         }
         
         self.depth_tree_controller.nodes.push(DepthTreeNode::new(fast_identifier, value_data, 0));
-        self.add_depth_children(0);
-        
+        self.add_depth_children(0, 1);
         
     }
     
-    pub fn add_depth_children(&mut self, index: usize) {
+    pub fn add_depth_children(&mut self, index: usize, level: usize) {
         let mut depth_node = self.depth_tree_controller.nodes[index].clone();
         let identifier = self.node_storage.general_from_fast(depth_node.fast_identifier);
         
@@ -128,7 +127,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
                     let req_index = self.depth_tree_controller.nodes.len();
 
                     // Value is new wo we add new node
-                    self.depth_tree_controller.nodes.push(DepthTreeNode::new(req_fast_identifier, req_value_data, index));
+                    self.depth_tree_controller.nodes.push(DepthTreeNode::new(req_fast_identifier, req_value_data, level));
                     // And mark it the identifier_node
                     identifier_nodes.nodes.insert(res.unwrap_err(), (req_value_nr, req_index));
                     
@@ -143,6 +142,9 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, D, GI, FI, PI,
             depth_node.reqs.push(depth_node_req);
             
             self.depth_tree_controller.identifier_nodes.insert(req_fast_identifier, identifier_nodes);
+            if DEBUG {
+                self.node_storage.on_add_depth_tree_identifier_callback(req_fast_identifier);
+            }
         }
 
         self.depth_tree_controller.nodes[index] = depth_node;
