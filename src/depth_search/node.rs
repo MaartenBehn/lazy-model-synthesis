@@ -21,6 +21,10 @@ impl<VD: ValueDataT> NodeT<VD> for DepthNode<VD> {
         &mut self.values
     }
 
+    fn set_values(&mut self, values: Vec<Value<VD>>) {
+        self.values = values;
+    }
+
     fn add_value_with_index(&mut self, value_index: ValueIndex, value_data: VD) {
         self.values.insert(value_index as usize, Value::new(value_data))
     }

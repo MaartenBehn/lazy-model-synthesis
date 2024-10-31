@@ -9,7 +9,7 @@ use crate::go_back_in_time::node::{GoBackNode, HistoryIndex};
 use crate::general_data_structure::node_storage::NodeStorageT;
 use crate::general_data_structure::identifier::{FastIdentifierT, GeneralIdentifierT, PackedIdentifierT};
 use crate::util::state_saver::State;
-use crate::general_data_structure::{ValueDataT, ValueNr};
+use crate::general_data_structure::{Value, ValueDataT, ValueNr};
 use crate::general_data_structure::node::{NodeT, ValueIndex};
 use crate::general_data_structure::req::ValueReq;
 use crate::general_data_structure::req_by::{ValueReqByPacker};
@@ -77,6 +77,12 @@ impl<N, WFCD, TreeD, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, WFCD
     }
 
     pub fn start_search(&mut self, fast_identifier: FI, value_data: VD) {
+
+        if DEBUG {
+            for (fast_identifier, _) in self.depth_tree_controller.identifier_nodes.iter() {
+                self.node_storage.on_remove_depth_tree_identifier_callback(*fast_identifier);
+            }
+        }
         self.depth_tree_controller.reset();
         
         self.depth_tree_controller.identifier_nodes.insert(fast_identifier, IdentifierNode::new(vec![(value_data.get_value_nr(), 0)]));
@@ -91,6 +97,7 @@ impl<N, WFCD, TreeD, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, WFCD
             self.node_storage.on_push_tree_apply_queue_callback(fast_identifier, value_data.get_value_nr());
         }
     }
+
     
     pub fn tick(&mut self) -> bool {
         if cfg!(debug_assertions) {
@@ -132,59 +139,60 @@ impl<N, WFCD, TreeD, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, WFCD
             self.node_storage.on_pop_add_queue_callback(fast_identifier, value_nr);
         }
         
-        // Get the other identifier of the node the general_data_structure was added.
+        // Get the other identifiers of the node the value was added.
         let identifier = self.node_storage.general_from_fast(fast_identifier);
         let packed_identifier = self.node_storage.packed_from_fast(fast_identifier);
         
         if DEBUG {
             info!("ADD: {:?}", identifier);
         }
-        
-        // Get the value_data and general_data_structure nr of the general_data_structure that was added
-        let node = self.node_storage.get_node_mut(fast_identifier);
-        
-        
+
+
+        let mut node = self.node_storage.get_node(fast_identifier).clone();
+
+        // Find out at what index the value was added to the node
         let value_index = node.get_value_index_from_value_nr(value_nr);
         let value_index = if DEBUG && value_index.is_err() {
-            warn!("Add {:?} general_data_structure nr {:?} not found!", identifier, value_nr);
+            warn!("Add {:?} value nr {:?} not found!", identifier, value_nr);
             return;
         } else {
             value_index.unwrap()
         };
-        
+
+        // Get the value data of the value that was added
         let value_data = node.values[value_index].value_data.clone();
-        
+
+        // Go over all requirements of the added value
         let num_reqs = self.node_storage.get_num_reqs_for_value_data(&value_data);
-        // Go over all requirements of the added general_data_structure 
         for req_index in 0..num_reqs {
             let req = self.node_storage.get_req_for_value_data(&value_data, req_index);
             
-            // Get the identifier node that that should contain a general_data_structure by requirement.
+            // Get the identifier to the node that the req points to.
             let req_identifier = self.node_storage.get_req_node_identifier(identifier, &req);
-            
             if !self.node_storage.is_identifier_valid(req_identifier) {
                 // The node is out of bounds -> Skip requirement
                 continue
             }
-            
-            // Add a Req of to the added general_data_structure
-            let node = self.node_storage.get_node_mut(fast_identifier);
+
+            // Add the req to the node
             let req_index = node.values[value_index].add_value_req(ValueReq::new_node_value_counter());
-            
+
+            // Get the node at the pos the req points to
             let req_fast_identifier = self.node_storage.fast_from_general(req_identifier);
-            
+            let mut req_node = self.node_storage.get_node(req_fast_identifier).clone();
+
+            // Go over all possible values for the req
             let num_possible_value_data = N::get_num_possible_value_data_for_req(&req);
             for req_value_data_index in 0..num_possible_value_data {
                 
                 let req_value_data = N::get_value_data_for_req(&req, req_value_data_index);
                 let req_value_nr = req_value_data.get_value_nr();
 
-                // Check if the node contains the general_data_structure that is required.
-                let req_node = self.node_storage.get_node_mut(req_fast_identifier);
+                // Check if the node contains the value that is required.
                 let req_value_index = req_node.get_value_index_from_value_nr(req_value_nr);
 
                 if req_value_index.is_err() {
-                    // The required general_data_structure needs to be added
+                    // The required value needs to be added
 
                     let req_value_index = req_value_index.err().unwrap();
                     req_node.add_value_with_index(req_value_index, req_value_data);
@@ -194,8 +202,7 @@ impl<N, WFCD, TreeD, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, WFCD
                     let req_req_by = self.req_by_packer.pack(packed_identifier, value_nr, req_index);
                     req_node.values[req_value_index].add_req_by(req_req_by);
 
-                    // Call to mark that one other general_data_structure will reference this req
-                    let node = self.node_storage.get_node_mut(fast_identifier);
+                    // Call to mark that one other value will reference this req
                     node.values[value_index].on_add_req_by(req_index);
 
                     // This neighbor node go a new general_data_structure so push it to be processed
@@ -212,11 +219,16 @@ impl<N, WFCD, TreeD, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, WFCD
                     req_node.values[req_value_index.unwrap()].add_req_by(req_req_by);
 
                     // Call to mark that one other general_data_structure will reference this req
-                    let node = self.node_storage.get_node_mut(fast_identifier);
                     node.values[value_index].on_add_req_by(req_index);
                 }
             }
+
+            // Safe the req node
+            self.node_storage.set_node(req_fast_identifier, req_node);
         }
+
+        // Safe the node
+        self.node_storage.set_node(fast_identifier, node);
     }
     
     fn remove_tick(&mut self, fast_identifier: FI, value_nr: ValueNr) {
@@ -495,16 +507,24 @@ impl<N, WFCD, TreeD, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, WFCD
         let mut depth_tree_node = self.depth_tree_controller.nodes[index].clone();
         depth_tree_node.applied = true;
 
+        let value_nr = depth_tree_node.value_data.get_value_nr();
+
         if DEBUG {
-            self.node_storage.on_pop_tree_apply_queue_callback(depth_tree_node.fast_identifier, depth_tree_node.value_data.get_value_nr());
+            self.node_storage.on_pop_tree_apply_queue_callback(depth_tree_node.fast_identifier, value_nr);
             let identifier = self.node_storage.general_from_fast(depth_tree_node.fast_identifier);
             info!("Tree Apply: {:?}", identifier);
         }
 
-        let node = self.node_storage.get_node(depth_tree_node.fast_identifier);
-        node.values[]
-        
-       
+        let node = self.node_storage.get_node_mut(depth_tree_node.fast_identifier);
+        let old_value_nr = node.values[0].value_data.get_value_nr();
+
+        node.set_values(vec![Value::new(depth_tree_node.value_data)]);
+
+        if DEBUG {
+            self.node_storage.on_remove_value_callback(depth_tree_node.fast_identifier, old_value_nr);
+            self.node_storage.on_add_value_callback(depth_tree_node.fast_identifier, value_nr);
+            self.node_storage.on_select_value_callback(depth_tree_node.fast_identifier, value_nr);
+        }
 
         for req_at in depth_tree_node.reqs.iter() {
             let chosen_node_index = req_at.tree_nodes[req_at.chosen_index.unwrap()].1;
@@ -517,19 +537,28 @@ impl<N, WFCD, TreeD, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, WFCD
                 }
             }
         }
+
+        self.depth_tree_controller.nodes[index] = depth_tree_node;
     }
     
     /// For Debugging 
     /// Sends the fast identifier of the node that will be processed in the next tick.
     fn send_next_processed_node(&mut self) {
-        let mut dispatcher = self.wfc_dispatcher.clone();
+        let mut wfc_dispatcher = self.wfc_dispatcher.clone();
+        let mut tree_dispatcher = self.tree_dispatcher.clone();
         
-        if let Some((fast_identifier, _)) = dispatcher.pop_add() {
+        if let Some((fast_identifier, _)) = wfc_dispatcher.pop_add() {
             self.node_storage.next_processed_node(Some(fast_identifier));
-        } else if let Some((fast_identifier, _)) = dispatcher.pop_remove() {
+        } else if let Some((fast_identifier, _)) = wfc_dispatcher.pop_remove() {
             self.node_storage.next_processed_node(Some(fast_identifier));
-        } else if let Some((fast_identifier, _)) = dispatcher.pop_select() {
+        } else if let Some((fast_identifier, _)) = wfc_dispatcher.pop_select() {
             self.node_storage.next_processed_node(Some(fast_identifier));
+        } else if let Some(index) = tree_dispatcher.pop_tree_build_tick() {
+            let depth_node = &self.depth_tree_controller.nodes[index];
+            self.node_storage.next_processed_node(Some(depth_node.fast_identifier));
+        } else if let Some(index) = tree_dispatcher.pop_tree_apply_tick() {
+            let depth_node = &self.depth_tree_controller.nodes[index];
+            self.node_storage.next_processed_node(Some(depth_node.fast_identifier));
         } else {
             self.node_storage.next_processed_node(None);
         }

@@ -1,6 +1,7 @@
 use std::ffi::c_float;
 use crate::util::state_saver::TickType;
 use std::time::Duration;
+use fastrand::Rng;
 use num_enum::TryFromPrimitive;
 use octa_force::gui::Gui;
 use octa_force::anyhow::*;
@@ -117,16 +118,14 @@ impl GridDebugDepthVisulation {
         self.state_saver.set_next_tick(TickType::None);
         
         
-        
         if DEBUG_MODE {
-            
             let mut wfc_d = self.state_saver.get_state().wfc_dispatcher.clone();
             if wfc_d.pop_add().is_none() && wfc_d.pop_remove().is_none() && wfc_d.pop_select().is_none() {
                 let mut tree_d = self.state_saver.get_state().tree_dispatcher.clone();
                 
                 // Place one automatic at the start
                 if tree_d.pop_tree_build_tick().is_none() &&  tree_d.pop_tree_apply_tick().is_none() {
-                    let gi = GlobalPos(ivec2(10, 10));
+                    let gi = GlobalPos(ivec2(fastrand::i32(0..32), fastrand::i32(0..32)));
                     let fi = self.state_saver.get_state().node_storage.fast_from_general(gi);
                     let node = self.state_saver.get_state().node_storage.get_node(fi);
                     let v = &node.values[0];
@@ -139,7 +138,7 @@ impl GridDebugDepthVisulation {
 
                     self.state_saver.get_state_mut().select_value(gi, ValueData::new(next_vt));
 
-                    self.run = false;
+                    //self.run = false;
                 }
             }
         }

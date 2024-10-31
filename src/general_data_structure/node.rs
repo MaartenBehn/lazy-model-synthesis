@@ -12,6 +12,7 @@ pub trait NodeT<VD: ValueDataT>: Clone + Default {
     fn new(num_values: usize) -> Self;
     fn get_values(&self) -> &[Value<VD>];
     fn get_values_mut(&mut self) -> &mut [Value<VD>];
+    fn set_values(&mut self, values: Vec<Value<VD>>);
     fn add_value_with_index(&mut self, value_index: ValueIndex, value_data: VD);
 
     /// Returns Ok with index if the general_data_structure is in node and Error with the index where the node should be added

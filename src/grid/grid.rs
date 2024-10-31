@@ -80,7 +80,11 @@ impl<NO: NodeT<ValueData>> NodeStorageT<GlobalPos, ChunkNodeIndex, PackedChunkNo
     fn get_node_mut(&mut self, fast_lookup: ChunkNodeIndex) -> &mut NO {
         &mut self.chunks[fast_lookup.chunk_index].nodes[fast_lookup.node_index]
     }
-    
+
+    fn set_node(&mut self, fast_lookup: ChunkNodeIndex, node: NO) {
+        self.chunks[fast_lookup.chunk_index].nodes[fast_lookup.node_index] = node;
+    }
+
     fn get_num_reqs_for_value_data(&mut self, value_data: &ValueData) -> usize {
         self.rules[value_data.value_type as usize].neighbor_reqs.len()
     }
