@@ -6,12 +6,14 @@ const SELECTOR_BIT: usize = 31;
 const NEXT_BIT: usize = 30;
 const HAS_TREE_IDENTIFIER_BIT: usize = 29;
 
-const BITS_PER_VALUE: usize = 4;
+const BITS_PER_VALUE: usize = 6;
 
 const ADDED_OFFSET: usize = 0;
 const SELECT_OFFSET: usize = 1;
 const ADD_OFFSET: usize = 2;
 const REMOVE_OFFSET: usize = 3;
+const TREE_BUILD_OFFSET: usize = 4;
+const TREE_APPLY_OFFSET: usize = 5;
 
 const MAX_SELECTED_BITS: usize = 4;
 const MAX_VALUE_TYPE_INDEX: usize = 2_usize.pow(MAX_SELECTED_BITS as u32);
@@ -64,6 +66,12 @@ impl NodeRenderData {
 
     pub fn get_remove_queue(&self, value_nr: ValueNr) -> bool { self.get_value_bit(value_nr, REMOVE_OFFSET) }
     pub fn set_remove_queue(&mut self, value_nr: ValueNr, v: bool) { self.set_value_bit(value_nr, REMOVE_OFFSET, v) }
+
+    pub fn get_tree_build_queue(&self, value_nr: ValueNr) -> bool { self.get_value_bit(value_nr, TREE_BUILD_OFFSET) }
+    pub fn set_tree_build_queue(&mut self, value_nr: ValueNr, v: bool) { self.set_value_bit(value_nr, TREE_BUILD_OFFSET, v) }
+
+    pub fn get_tree_apply_queue(&self, value_nr: ValueNr) -> bool { self.get_value_bit(value_nr, TREE_APPLY_OFFSET) }
+    pub fn set_tree_apply_queue(&mut self, value_nr: ValueNr, v: bool) { self.set_value_bit(value_nr, TREE_APPLY_OFFSET, v) }
     
     pub fn get_selected_value_type(&self) -> ValueNr {
         (self.data & (MAX_VALUE_TYPE_INDEX - 1) as u32 - 1) as ValueNr

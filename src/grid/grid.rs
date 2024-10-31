@@ -3,6 +3,7 @@
 use std::iter::repeat_with;
 use fastrand::Rng;
 use octa_force::glam::IVec2;
+use crate::depth_search::depth_tree::DepthIndex;
 use crate::go_back_in_time::node::GoBackNode;
 use crate::general_data_structure::node_storage::NodeStorageT;
 use crate::grid::rules::{NeighborReq, NUM_VALUES, Rule, ValueType};
@@ -152,6 +153,22 @@ impl<NO: NodeT<ValueData>> NodeStorageT<GlobalPos, ChunkNodeIndex, PackedChunkNo
 
     fn on_pop_select_queue_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
         self.chunks[fast.chunk_index].render_data[fast.node_index].set_select_queue(value_nr, false);
+    }
+
+    fn on_push_tree_build_queue_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_tree_build_queue(value_nr, true);
+    }
+
+    fn on_pop_tree_build_queue_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_tree_build_queue(value_nr, false);
+    }
+
+    fn on_push_tree_apply_queue_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_tree_apply_queue(value_nr, true);
+    }
+
+    fn on_pop_tree_apply_queue_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_tree_apply_queue(value_nr, false);
     }
 
     fn on_add_depth_tree_identifier_callback(&mut self, fast: ChunkNodeIndex) {

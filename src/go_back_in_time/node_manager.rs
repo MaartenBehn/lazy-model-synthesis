@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use octa_force::log::{debug, error, info, warn};
 use octa_force::puffin_egui::puffin;
-use crate::dispatcher::Dispatcher;
+use crate::dispatcher::WFCDispatcherT;
 use crate::go_back_in_time::history::History;
 use crate::go_back_in_time::node::{GoBackNode, HistoryIndex};
 use crate::general_data_structure::node_storage::NodeStorageT;
@@ -16,7 +16,7 @@ use crate::general_data_structure::req_by::{ValueReqByPacker};
 pub struct GoBackNodeManager<N, D, GI, FI, PI, VD, const DEBUG: bool>
     where
         N: NodeStorageT<GI, FI, PI, GoBackNode<VD>, VD>,
-        D: Dispatcher<FI>,
+        D: WFCDispatcherT<FI>,
         GI: GeneralIdentifierT,
         FI: FastIdentifierT,
         PI: PackedIdentifierT,
@@ -39,7 +39,7 @@ pub struct GoBackNodeManager<N, D, GI, FI, PI, VD, const DEBUG: bool>
 impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI, VD, DEBUG>
     where
         N: NodeStorageT<GI, FI, PI, GoBackNode<VD>, VD>,
-        D: Dispatcher<FI>,
+        D: WFCDispatcherT<FI>,
         GI: GeneralIdentifierT,
         FI: FastIdentifierT,
         PI: PackedIdentifierT,
@@ -480,7 +480,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
 impl<N, D, GI, FI, PI, VD, const DEBUG: bool> State for GoBackNodeManager<N, D, GI, FI, PI, VD, DEBUG>
     where
         N: NodeStorageT<GI, FI, PI, GoBackNode<VD>, VD>,
-        D: Dispatcher<FI>,
+        D: WFCDispatcherT<FI>,
         GI: GeneralIdentifierT,
         FI: FastIdentifierT,
         PI: PackedIdentifierT,

@@ -10,12 +10,14 @@ vec4 rgb(uint r, uint g, uint b) {
 
 #define SELECTED_VALUE_BITS 4
 #define SELECTED_VALUE_MASK uint(pow(2, SELECTED_VALUE_BITS) - 1)
-#define BITS_PER_VALUE 4
 
+#define BITS_PER_VALUE 6
 #define ADDED_OFFSET 0
 #define SELECT_OFFSET 1
 #define ADD_OFFSET 2
 #define REMOVE_OFFSET 3
+#define TREE_BUILD_OFFSET 4
+#define TREE_APPLY_OFFSET 5
 
 #define STONE_INDEX 0
 #define GRASS_INDEX 1
@@ -25,16 +27,19 @@ vec4 rgb(uint r, uint g, uint b) {
 #define NEXT_COLOR rgb(255, 121, 0)
 #define HAS_TREE_IDENTIFIER_COLOR rgb(255, 255, 0)
 
+
 #define ADD_COLOR rgb(0, 53, 218)
 #define REMOVE_COLOR rgb(133, 23, 152)
 #define SELECT_COLOR rgb(57, 150, 221)
+#define TREE_BUILD_COLOR rgb(255, 165, 0)
+#define TREE_APPLY_COLOR rgb(255, 200, 0)
 
 #define STONE_COLOR rgb(88, 90, 94)
 #define GRASS_COLOR rgb(0, 128, 0)
 #define SAND_COLOR rgb(226, 202, 118)
 
 #define BORDER_SIZES 0.02
-#define RECT_SIZE 0.2
+#define RECT_SIZE 1.0 / 6.0
 
 layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
@@ -98,7 +103,7 @@ vec4 debug_color(uint data, vec2 v, vec4 color) {
     return NEXT_COLOR;
   }
 
-  if (bit_set(data, HAS_TREE_IDENTIFIER_BIT) && in_inner_rect(v, vec2(0.0, RECT_SIZE * 4), vec2(RECT_SIZE, RECT_SIZE * 5))) {
+  if (bit_set(data, HAS_TREE_IDENTIFIER_BIT) && in_inner_rect(v, vec2(RECT_SIZE * 4, 0.0), vec2(RECT_SIZE * 5, RECT_SIZE))) {
     return HAS_TREE_IDENTIFIER_COLOR;
   }
 
@@ -143,17 +148,43 @@ vec4 debug_color(uint data, vec2 v, vec4 color) {
     return REMOVE_COLOR;
   }
 
+  // Marker if Value is in build tree Queue
+  if (value_bit_set(data, STONE_INDEX, TREE_BUILD_OFFSET) && in_inner_rect(v, vec2(0.0, RECT_SIZE * 3), vec2(RECT_SIZE, RECT_SIZE * 4))) {
+    return TREE_BUILD_COLOR;
+  }
+
+  if (value_bit_set(data, GRASS_INDEX, TREE_BUILD_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE, RECT_SIZE * 3), vec2(RECT_SIZE * 2, RECT_SIZE * 4))) {
+    return TREE_BUILD_COLOR;
+  }
+
+  if (value_bit_set(data, SAND_INDEX, TREE_BUILD_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE * 2, RECT_SIZE * 3), vec2(RECT_SIZE * 3, RECT_SIZE * 4))) {
+    return TREE_BUILD_COLOR;
+  }
+
+  // Marker if Value is in apply tree Queue
+  if (value_bit_set(data, STONE_INDEX, TREE_APPLY_OFFSET) && in_inner_rect(v, vec2(0.0, RECT_SIZE * 4), vec2(RECT_SIZE, RECT_SIZE * 5))) {
+    return TREE_APPLY_COLOR;
+  }
+
+  if (value_bit_set(data, GRASS_INDEX, TREE_APPLY_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE, RECT_SIZE * 4), vec2(RECT_SIZE * 2, RECT_SIZE * 5))) {
+    return TREE_APPLY_COLOR;
+  }
+
+  if (value_bit_set(data, SAND_INDEX, TREE_APPLY_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE * 2, RECT_SIZE * 4), vec2(RECT_SIZE * 3, RECT_SIZE * 5))) {
+    return TREE_APPLY_COLOR;
+  }
+
 
   // Marker which value is possible for node
-  if (value_bit_set(data, STONE_INDEX, ADDED_OFFSET) && in_inner_rect(v, vec2(0.0, RECT_SIZE * 4), vec2(RECT_SIZE, RECT_SIZE * 5))) {
+  if (value_bit_set(data, STONE_INDEX, ADDED_OFFSET) && in_inner_rect(v, vec2(0.0, RECT_SIZE * 5), vec2(RECT_SIZE, RECT_SIZE * 6))) {
     return STONE_COLOR;
   }
 
-  if (value_bit_set(data, GRASS_INDEX, ADDED_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE, RECT_SIZE * 4), vec2(RECT_SIZE * 2, RECT_SIZE * 5))) {
+  if (value_bit_set(data, GRASS_INDEX, ADDED_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE, RECT_SIZE * 5), vec2(RECT_SIZE * 2, RECT_SIZE * 6))) {
     return GRASS_COLOR;
   }
 
-  if (value_bit_set(data, SAND_INDEX, ADDED_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE * 2, RECT_SIZE * 4), vec2(RECT_SIZE * 3, RECT_SIZE * 5))) {
+  if (value_bit_set(data, SAND_INDEX, ADDED_OFFSET) && in_inner_rect(v, vec2(RECT_SIZE * 2, RECT_SIZE * 5), vec2(RECT_SIZE * 3, RECT_SIZE * 6))) {
     return SAND_COLOR;
   }
 

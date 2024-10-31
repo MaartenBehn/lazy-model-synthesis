@@ -1,16 +1,23 @@
 use std::collections::VecDeque;
-use crate::dispatcher::Dispatcher;
+use crate::depth_search::depth_tree::DepthIndex;
+use crate::dispatcher::{DepthTreeDispatcherT, WFCDispatcherT};
 use crate::general_data_structure::identifier::FastIdentifierT;
 use crate::general_data_structure::ValueNr;
 
 #[derive(Default, Clone)]
-pub struct VecDispatcher<FI: FastIdentifierT> {
+pub struct VecWFCDispatcher<FI: FastIdentifierT> {
     add: VecDeque<(FI, ValueNr)>,
     remove: VecDeque<(FI, ValueNr)>,
     select: VecDeque<(FI, ValueNr)>,
 }
 
-impl<FI: FastIdentifierT> Dispatcher<FI> for VecDispatcher<FI> {
+#[derive(Default, Clone)]
+pub struct VecTreeDispatcher {
+    tree_build: VecDeque<DepthIndex>,
+    tree_apply: VecDeque<DepthIndex>,
+}
+
+impl<FI: FastIdentifierT> WFCDispatcherT<FI> for VecWFCDispatcher<FI> {
     fn push_add(&mut self, fast_identifier: FI, value_nr: ValueNr) {
         self.add.push_back((fast_identifier, value_nr))
     }
@@ -39,5 +46,23 @@ impl<FI: FastIdentifierT> Dispatcher<FI> for VecDispatcher<FI> {
         self.select.iter().find(|(i, v)| {
             *i == fast_identifier && *v == value_nr
         }).is_some()
+    }
+}
+
+impl DepthTreeDispatcherT for VecTreeDispatcher {
+    fn push_tree_build_tick(&mut self, tree_index: DepthIndex) {
+        self.tree_build.push_back(tree_index)
+    }
+
+    fn pop_tree_build_tick(&mut self) -> Option<DepthIndex> {
+        self.tree_build.pop_back()
+    }
+
+    fn push_tree_apply_tick(&mut self, tree_index: DepthIndex) {
+        self.tree_apply.push_back(tree_index)
+    }
+
+    fn pop_tree_apply_tick(&mut self) -> Option<DepthIndex> {
+        self.tree_apply.pop_back()
     }
 }

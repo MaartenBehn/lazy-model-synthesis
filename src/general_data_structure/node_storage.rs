@@ -1,3 +1,4 @@
+use crate::depth_search::depth_tree::DepthIndex;
 use crate::general_data_structure::identifier::{FastIdentifierT, GeneralIdentifierT, IdentifierConverterT, PackedIdentifierT};
 use crate::general_data_structure::{ValueDataT, ValueNr};
 use crate::general_data_structure::node::{NodeT, ValueIndex};
@@ -36,6 +37,10 @@ pub trait NodeStorageT<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: PackedId
     fn on_pop_remove_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
     fn on_push_select_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
     fn on_pop_select_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
+    fn on_push_tree_build_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
+    fn on_pop_tree_build_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
+    fn on_push_tree_apply_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
+    fn on_pop_tree_apply_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
 
     fn on_add_depth_tree_identifier_callback(&mut self, fast: FI);
 

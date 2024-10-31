@@ -32,3 +32,4 @@ impl<VD: ValueDataT> NodeT<VD> for DepthNode<VD> {
     }
 }
 
+

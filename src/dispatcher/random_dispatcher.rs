@@ -1,5 +1,5 @@
 use fastrand::Rng;
-use crate::dispatcher::Dispatcher;
+use crate::dispatcher::WFCDispatcherT;
 use crate::general_data_structure::identifier::FastIdentifierT;
 use crate::general_data_structure::ValueNr;
 
@@ -26,7 +26,7 @@ impl<FI: FastIdentifierT> RandomDispatcher<FI> {
     }
 }
 
-impl<FI: FastIdentifierT> Dispatcher<FI> for RandomDispatcher<FI> {
+impl<FI: FastIdentifierT> WFCDispatcherT<FI> for RandomDispatcher<FI> {
     fn push_add(&mut self, fast_identifier: FI, value_nr: ValueNr) {
         Self::push(&mut self.add, fast_identifier, value_nr)
     }

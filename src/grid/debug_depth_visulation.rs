@@ -15,10 +15,11 @@ use octa_force::puffin_egui::puffin;
 use octa_force::vulkan::ash::vk::AttachmentLoadOp;
 use crate::depth_search::node::DepthNode;
 use crate::depth_search::node_manager::DepthNodeManager;
-use crate::dispatcher::Dispatcher;
+use crate::dispatcher::{DepthTreeDispatcherT, WFCDispatcherT};
 use crate::grid::grid::{Grid, ValueData};
 use crate::grid::identifier::{ChunkNodeIndex, GlobalPos, PackedChunkNodeIndex};
 use crate::dispatcher::random_dispatcher::RandomDispatcher;
+use crate::dispatcher::vec_dispatcher::VecTreeDispatcher;
 use crate::go_back_in_time::node_manager::GoBackNodeManager;
 use crate::grid::render::node_render_data::NUM_VALUE_TYPES;
 use crate::grid::render::renderer::GridRenderer;
@@ -40,6 +41,7 @@ pub struct GridDebugDepthVisulation {
         DepthNodeManager<
             Grid<DepthNode<ValueData>>, 
             RandomDispatcher<ChunkNodeIndex>,
+            VecTreeDispatcher,
             GlobalPos, 
             ChunkNodeIndex, 
             PackedChunkNodeIndex,
@@ -54,7 +56,6 @@ pub struct GridDebugDepthVisulation {
     run: bool,
     run_ticks_per_frame: usize,
     pointer_pos_in_grid: Option<Vec2>,
-    performed_select: bool,
 }
 
 impl GridDebugDepthVisulation {
@@ -85,10 +86,9 @@ impl GridDebugDepthVisulation {
             gui,
             grid_renderer,
             selector,
-            run: false,
+            run: true,
             run_ticks_per_frame: 10,
             pointer_pos_in_grid: None,
-            performed_select: false,
         })
     }
 
@@ -106,7 +106,7 @@ impl GridDebugDepthVisulation {
             );
         }
         
-        if self.run || DEBUG_MODE {
+        if self.run  {
             self.state_saver.set_next_tick(TickType::ForwardSave);
             for _ in 0..self.run_ticks_per_frame {
                 self.state_saver.tick();
@@ -118,24 +118,29 @@ impl GridDebugDepthVisulation {
         
         
         
-        if DEBUG_MODE && !self.performed_select {
-            // Place one automatic at the start
-            let mut d = self.state_saver.get_state().dispatcher.clone();
-            if d.pop_add().is_none() && d.pop_remove().is_none() && d.pop_select().is_none() {
-                let gi = GlobalPos(ivec2(10, 10));
-                let fi = self.state_saver.get_state().node_storage.fast_from_general(gi);
-                let node = self.state_saver.get_state().node_storage.get_node(fi);
-                let v = &node.values[0];
-                let vt = ValueType::try_from_primitive(v.value_data.get_value_nr()).unwrap();
-                let next_vt = if vt == ValueType::Grass {
-                    ValueType::Stone
-                } else {
-                    ValueType::Grass
-                };
+        if DEBUG_MODE {
+            
+            let mut wfc_d = self.state_saver.get_state().wfc_dispatcher.clone();
+            if wfc_d.pop_add().is_none() && wfc_d.pop_remove().is_none() && wfc_d.pop_select().is_none() {
+                let mut tree_d = self.state_saver.get_state().tree_dispatcher.clone();
                 
-                self.state_saver.get_state_mut().select_value(gi, ValueData::new(next_vt));
+                // Place one automatic at the start
+                if tree_d.pop_tree_build_tick().is_none() &&  tree_d.pop_tree_apply_tick().is_none() {
+                    let gi = GlobalPos(ivec2(10, 10));
+                    let fi = self.state_saver.get_state().node_storage.fast_from_general(gi);
+                    let node = self.state_saver.get_state().node_storage.get_node(fi);
+                    let v = &node.values[0];
+                    let vt = ValueType::try_from_primitive(v.value_data.get_value_nr()).unwrap();
+                    let next_vt = if vt == ValueType::Grass {
+                        ValueType::Stone
+                    } else {
+                        ValueType::Grass
+                    };
 
-                self.performed_select = true;
+                    self.state_saver.get_state_mut().select_value(gi, ValueData::new(next_vt));
+
+                    self.run = false;
+                }
             }
         }
         
@@ -188,7 +193,7 @@ impl GridDebugDepthVisulation {
 
                 ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
                     div(ui, |ui| {
-                        ui.heading("Grid (Debug Mode)");
+                        ui.heading("Depth Tree Grid (Debug Mode)");
                     });
 
 
@@ -305,7 +310,7 @@ impl GridDebugDepthVisulation {
 
                             ui.label("Tree Identifier Node:");
 
-                            for (value_nr, tree_index) in tree_identifier_node.nodes.iter() {
+                            for (value_nr, tree_index) in tree_identifier_node.tree_nodes.iter() {
                                 let value_type = ValueType::try_from_primitive(*value_nr).unwrap();
                                 ui.label(format!("{value_type:?} at Tree Index {tree_index}"));
                             }
@@ -333,7 +338,7 @@ impl GridDebugDepthVisulation {
                         let node = &depth_tree_controller.identifier_nodes.get(&fast_identifier);
                         if node.is_some() {
                             let node = node.unwrap();
-                            node.nodes.to_owned()
+                            node.tree_nodes.to_owned()
                         } else {
                             vec![]
                         }
@@ -346,26 +351,34 @@ impl GridDebugDepthVisulation {
                         
                         let selected = tree_identifiers.iter().find(|(_, test_i)| i == *test_i).is_some();
                         
+                        let processed = if node.processed {"D"} else {""};
+                        let satisfied = if node.satisfied {"S"} else {""};
+                        let level = node.level;
                         let pos = grid.general_from_fast(node.fast_identifier);
                         if selected {
-                            ui.heading(RichText::new(format!(">>> Node: {i}")).strong());
+                            ui.heading(RichText::new(format!(">>> Tree Node: {i} {level} {satisfied}{processed}")).strong());
                         } else {
-                            ui.heading(format!("Node: {i}"));
+                            ui.heading(format!("Tree Node: {i} {satisfied}{processed}"));
                         }
                         
-                        ui.label(format!("Pos: [{},{}]", pos.0.x, pos.0.y));
+                        ui.label(format!("Pos: [{:0>2},{:0>2}]", pos.0.x, pos.0.y));
                         ui.label(format!("Value: {:?}", node.value_data.value_type));
-                        ui.label(format!("Level: {}", node.level));
                         ui.label("Reqs:");
 
-                        for req in node.reqs.iter() {
+                        for req_at in node.reqs.iter() {
                             ui.separator();
                             
-                            let req_pos = grid.general_from_fast(req.fast_identifier);
+                            let req_pos = grid.general_from_fast(req_at.fast_identifier);
                             ui.label(format!("ReqPos: [{},{}]", req_pos.0.x, req_pos.0.y));
-                            for (req_value_nr, tree_index) in req.nodes.iter() {
+                            for (i, (req_value_nr, tree_index)) in req_at.tree_nodes.iter().enumerate() {
                                 let value_type = ValueType::try_from_primitive(*req_value_nr).unwrap();
-                                ui.label(format!("{value_type:?} at Tree Index {tree_index}"));
+                                
+                                if req_at.chosen_index == Some(i) {
+                                    ui.label(format!("> {value_type:?} at Tree Index {tree_index}"));
+                                } else {
+                                    ui.label(format!("{value_type:?} at Tree Index {tree_index}"));
+                                }
+                                
                             }
                         }
                     }
