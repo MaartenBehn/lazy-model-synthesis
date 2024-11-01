@@ -1,17 +1,12 @@
-use crate::general_data_structure::value::ValueNr;
+use crate::general_data_structure::value::ValueDataT;
+use crate::grid::grid::ValueData;
 
 const SELECTOR_BIT: usize = 31;
 const NEXT_BIT: usize = 30;
 const HAS_TREE_IDENTIFIER_BIT: usize = 29;
 
-const BITS_PER_VALUE: usize = 6;
-
+const BITS_PER_VALUE: usize = 3;
 const ADDED_OFFSET: usize = 0;
-const SELECT_OFFSET: usize = 1;
-const ADD_OFFSET: usize = 2;
-const REMOVE_OFFSET: usize = 3;
-const TREE_BUILD_OFFSET: usize = 4;
-const TREE_APPLY_OFFSET: usize = 5;
 
 const MAX_SELECTED_BITS: usize = 4;
 const MAX_VALUE_TYPE_INDEX: usize = 2_usize.pow(MAX_SELECTED_BITS as u32);
@@ -43,40 +38,28 @@ impl NodeRenderData {
 
     pub fn set_depth_tree_identifier(&mut self, v: bool) { self.set_bit(HAS_TREE_IDENTIFIER_BIT, v) }
 
-    fn get_value_bit(&self, value_nr: ValueNr, offset: usize) -> bool {
-        let index = value_nr as usize * BITS_PER_VALUE + offset + MAX_SELECTED_BITS;
+    fn get_value_bit(&self, value_data: ValueData, offset: usize) -> bool {
+        let index = value_data.get_value_nr() as usize * BITS_PER_VALUE + offset + MAX_SELECTED_BITS;
         self.get_bit(index)
     }
 
-    fn set_value_bit(&mut self, value_nr: ValueNr, offset: usize, v: bool) {
-        let index = value_nr as usize * BITS_PER_VALUE + offset + MAX_SELECTED_BITS;
+    fn set_value_bit(&mut self, value_data: ValueData, offset: usize, v: bool) {
+        let index = value_data.get_value_nr() as usize * BITS_PER_VALUE + offset + MAX_SELECTED_BITS;
         self.set_bit(index, v);
     }
 
-    pub fn get_value_type(&self, value_nr: ValueNr) -> bool { self.get_value_bit(value_nr, ADDED_OFFSET) }
-    pub fn set_value_type(&mut self, value_nr: ValueNr, v: bool) { self.set_value_bit(value_nr, ADDED_OFFSET, v) }
+    pub fn get_value_type(&self, value_data: ValueData) -> bool { self.get_value_bit(value_data, ADDED_OFFSET) }
+    pub fn set_value_type(&mut self, value_data: ValueData, v: bool) { self.set_value_bit(value_data, ADDED_OFFSET, v) }
 
-    pub fn get_select_queue(&self, value_nr: ValueNr) -> bool { self.get_value_bit(value_nr, SELECT_OFFSET) }
-    pub fn set_select_queue(&mut self, value_nr: ValueNr, v: bool) { self.set_value_bit(value_nr, ADD_OFFSET, v) }
-
-    pub fn get_add_queue(&self, value_nr: ValueNr) -> bool { self.get_value_bit(value_nr, ADD_OFFSET) }
-    pub fn set_add_queue(&mut self, value_nr: ValueNr, v: bool) { self.set_value_bit(value_nr, ADD_OFFSET, v) }
-
-    pub fn get_remove_queue(&self, value_nr: ValueNr) -> bool { self.get_value_bit(value_nr, REMOVE_OFFSET) }
-    pub fn set_remove_queue(&mut self, value_nr: ValueNr, v: bool) { self.set_value_bit(value_nr, REMOVE_OFFSET, v) }
-
-    pub fn get_tree_build_queue(&self, value_nr: ValueNr) -> bool { self.get_value_bit(value_nr, TREE_BUILD_OFFSET) }
-    pub fn set_tree_build_queue(&mut self, value_nr: ValueNr, v: bool) { self.set_value_bit(value_nr, TREE_BUILD_OFFSET, v) }
-
-    pub fn get_tree_apply_queue(&self, value_nr: ValueNr) -> bool { self.get_value_bit(value_nr, TREE_APPLY_OFFSET) }
-    pub fn set_tree_apply_queue(&mut self, value_nr: ValueNr, v: bool) { self.set_value_bit(value_nr, TREE_APPLY_OFFSET, v) }
+    pub fn get_queue(&self, value_data: ValueData, i: usize) -> bool { self.get_value_bit(value_data, i) }
+    pub fn set_queue(&mut self, value_data: ValueData, v: bool, i: usize) { self.set_value_bit(value_data, i, v) }
     
-    pub fn get_selected_value_type(&self) -> ValueNr {
-        (self.data & (MAX_VALUE_TYPE_INDEX - 1) as u32 - 1) as ValueNr
+    pub fn get_selected_value_type(&self) -> ValueData {
+        ValueData::from_value_nr(self.data & (MAX_VALUE_TYPE_INDEX - 1) as u32 - 1)
     }
 
-    pub fn set_selected_value_type(&mut self, value_nr: ValueNr)  {
-        self.data = value_nr as u32 + 1 + (self.data & !(MAX_VALUE_TYPE_INDEX - 1) as u32);
+    pub fn set_selected_value_type(&mut self, value_data: ValueData)  {
+        self.data = value_data.get_value_nr() + 1 + (self.data & !(MAX_VALUE_TYPE_INDEX - 1) as u32);
     }
 
     pub fn unselected_value_type(&mut self)  {

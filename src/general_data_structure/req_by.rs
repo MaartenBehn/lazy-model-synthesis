@@ -1,13 +1,13 @@
 use crate::util::{get_mask_from_num_bits, get_num_bits_for_number};
 use crate::general_data_structure::identifier::PackedIdentifierT;
 use crate::general_data_structure::req::ReqIndex;
-use crate::general_data_structure::value::ValueNr;
+use crate::general_data_structure::value::ValueDataT;
 
 pub type ReqByIndex = usize;
 
 
 /// Packed Node Identifier + Value Nr + Req Index 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct ValueReqBy(u32);
 
 #[derive(Default, Copy, Clone)]
@@ -37,7 +37,7 @@ impl ValueReqByPacker {
         }
     }
     
-    pub fn pack<PI: PackedIdentifierT>(&self, packed_identifier: PI, value_nr: ValueNr, req_index: ReqIndex) -> ValueReqBy {
+    pub fn pack<PI: PackedIdentifierT, VD: ValueDataT>(&self, packed_identifier: PI, value_data: VD, req_index: ReqIndex) -> ValueReqBy {
         let identifier_bits = packed_identifier.to_bits();
 
         {   // Debug Check
@@ -49,17 +49,18 @@ impl ValueReqByPacker {
         }
 
         let data = (identifier_bits << self.identifier_shift) 
-            + ((value_nr as u32) << self.value_nr_shift) 
+            + ((value_data.get_value_nr()) << self.value_nr_shift) 
             + (req_index as u32);
         ValueReqBy(data)
     }
     
-    pub fn unpack<PI: PackedIdentifierT>(&self, req_by: ValueReqBy) -> (PI, ValueNr, ReqIndex) {
+    pub fn unpack<PI: PackedIdentifierT, VD: ValueDataT>(&self, req_by: ValueReqBy) -> (PI, VD, ReqIndex) {
         let identifier_bits = req_by.0 >> self.identifier_shift;
-        let value_index = ((req_by.0 >> self.value_nr_shift) & self.value_nr_shift) as ValueNr;
+        let value_nr = (req_by.0 >> self.value_nr_shift) & self.value_nr_shift;
         let req_index = (req_by.0 & self.req_mask) as ReqIndex;
-
-        (PI::from_bits(identifier_bits), value_index, req_index)
+        let value_data = VD::from_value_nr(value_nr);
+        
+        (PI::from_bits(identifier_bits), value_data, req_index)
     }
 }
 

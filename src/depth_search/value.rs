@@ -1,7 +1,7 @@
 use crate::general_data_structure::value::{ValueDataT, ValueT};
 
-#[derive(Copy, Clone, Default)]
-pub struct DepthValue<VD> {
+#[derive(Copy, Clone, Default, Eq, PartialEq)]
+pub struct DepthValue<VD: ValueDataT> {
     pub value_data: VD,
 }
 

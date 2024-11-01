@@ -1,7 +1,7 @@
 
 use crate::util::get_num_bits_for_number;
 use crate::general_data_structure::identifier::PackedIdentifierT;
-use crate::general_data_structure::value::ValueNr;
+use crate::general_data_structure::value::ValueDataT;
 
 pub type SummaryIndex = u32;
 
@@ -26,7 +26,7 @@ impl HistoryNodePacker {
         }
     }
 
-    pub fn pack_change<I: PackedIdentifierT>(&self, packed_identifier: I, value_nr: ValueNr) -> HistoryNode {
+    pub fn pack_change<I: PackedIdentifierT, VD: ValueDataT>(&self, packed_identifier: I, value_data: VD) -> HistoryNode {
         let identifier_bits = packed_identifier.to_bits();
 
         {
@@ -37,17 +37,18 @@ impl HistoryNodePacker {
             );
         }
 
-        let data = (1 << 31) + (identifier_bits << self.num_values_bits) + value_nr;
+        let data = (1 << 31) + (identifier_bits << self.num_values_bits) + value_data.get_value_nr();
         HistoryNode(data)
     }
 
 
-    pub fn unpack_change<I: PackedIdentifierT>(&self, node: HistoryNode) -> (I, ValueNr) {
+    pub fn unpack_change<I: PackedIdentifierT, VD: ValueDataT>(&self, node: HistoryNode) -> (I, VD) {
         let data = node.0 & !(1 << 31);
         let identifier_bits = data >> self.num_values_bits;
-        let value_index = data & self.num_values_mask;
+        let value_nr = data & self.num_values_mask;
+        let value_data = VD::from_value_nr(value_nr);
 
-        (I::from_bits(identifier_bits), value_index)
+        (I::from_bits(identifier_bits), value_data)
     }
     
     pub fn pack_summary(&self, index: SummaryIndex) -> HistoryNode {

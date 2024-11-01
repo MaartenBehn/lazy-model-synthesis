@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crate::general_data_structure::identifier::FastIdentifierT;
-use crate::general_data_structure::value::{ValueDataT, ValueNr};
+use crate::general_data_structure::value::{ValueDataT};
 
 pub type DepthIndex = usize;
 pub type DepthReqATIndex = usize;
@@ -9,7 +9,6 @@ pub type DepthLevel = usize;
 
 #[derive(Default, Clone)]
 pub struct DepthTreeController<FI: FastIdentifierT, VD: ValueDataT> {
-    pub identifier_nodes: HashMap<FI, IdentifierNode>,
     pub nodes: Vec<DepthTreeNode<FI, VD>>,
 }
 
@@ -18,36 +17,31 @@ pub struct DepthTreeNode<FI: FastIdentifierT, VD: ValueDataT> {
     pub fast_identifier: FI,
     pub value_data: VD,
     pub level: DepthLevel,
-    pub reqs: Vec<ReqAtIdentifier<FI>>,
-    pub other_req: Vec<(DepthIndex, DepthReqATIndex, DepthReqIndex)>,
+    pub reqs: Vec<ReqAtIdentifier<FI, VD>>,
+    pub req_by: Vec<(DepthIndex, DepthReqATIndex, DepthReqIndex)>,
     pub satisfied: bool,
-    pub processed: bool,
+    pub possible: bool,
+    pub build: bool,
     pub applied: bool,
 }
 
 #[derive(Clone)]
-pub struct ReqAtIdentifier<FI: FastIdentifierT> {
+pub struct ReqAtIdentifier<FI: FastIdentifierT, VD> {
     pub fast_identifier: FI,
-    pub tree_nodes: Vec<(ValueNr, DepthIndex)>,
+    pub tree_nodes: Vec<(VD, DepthIndex)>,
     pub chosen_index: Option<usize>, 
-}
-
-#[derive(Clone)]
-pub struct IdentifierNode {
-    pub tree_nodes: Vec<(ValueNr, DepthIndex)>,
 }
 
 impl<FI: FastIdentifierT, VD: ValueDataT> DepthTreeController<FI, VD> {
     pub fn new() -> DepthTreeController<FI, VD> {
         DepthTreeController {
-            identifier_nodes: HashMap::default(),
             nodes: vec![],
         }
     }
 }
 
-impl<FI: FastIdentifierT> ReqAtIdentifier<FI> {
-    pub fn new(fast: FI) -> ReqAtIdentifier<FI> {
+impl<FI: FastIdentifierT, VD> ReqAtIdentifier<FI, VD> {
+    pub fn new(fast: FI) -> ReqAtIdentifier<FI, VD> {
         ReqAtIdentifier {
             fast_identifier: fast,
             tree_nodes: vec![],
@@ -58,7 +52,6 @@ impl<FI: FastIdentifierT> ReqAtIdentifier<FI> {
 
 impl<FI: FastIdentifierT, VD: ValueDataT> DepthTreeController<FI, VD> {
     pub fn reset(&mut self) {
-        self.identifier_nodes = HashMap::default();
         self.nodes = vec![];
     }
 }
@@ -70,18 +63,11 @@ impl<FI: FastIdentifierT, VD: ValueDataT> DepthTreeNode<FI, VD>{
             value_data,
             level,
             reqs: vec![],
-            other_req: vec![],
+            req_by: vec![],
             satisfied: false,
-            processed: false,
+            possible: true,
+            build: false,
             applied: false,
-        }
-    }
-}
-
-impl IdentifierNode {
-    pub fn new(nodes: Vec<(ValueNr, DepthIndex)>) -> Self {
-        Self {
-            tree_nodes: nodes,
         }
     }
 }

@@ -1,7 +1,7 @@
 use crate::depth_search::depth_tree::DepthIndex;
 use crate::general_data_structure::identifier::{FastIdentifierT, GeneralIdentifierT, IdentifierConverterT, PackedIdentifierT};
 use crate::general_data_structure::node::{NodeT, ValueIndex};
-use crate::general_data_structure::value::{ValueDataT, ValueNr, ValueT};
+use crate::general_data_structure::value::{ValueDataT, ValueT};
 
 pub trait NodeStorageT<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: PackedIdentifierT, NO: NodeT<V, VD>, V: ValueT<VD>, VD: ValueDataT>: 
     IdentifierConverterT<GI, FI, PI> + Default + Clone
@@ -20,8 +20,7 @@ pub trait NodeStorageT<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: PackedId
     fn get_req_node_identifier(&mut self, original_identifier: GI, req: &Self::Req) -> GI;
 
     fn is_identifier_valid(&self, identifier: GI) -> bool;
-
-    fn value_data_matches_req(value_data: &VD, req: &Self::Req) -> bool;
+    fn value_nr_matches_req(value_data: VD, req: &Self::Req) -> bool;
 
     fn get_num_possible_value_data_for_req(req: &Self::Req) -> usize;
 
@@ -30,20 +29,12 @@ pub trait NodeStorageT<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: PackedId
     fn select_value_from_slice(&mut self, fast: FI) -> ValueIndex;
 
     // Callbacks for debug rendering
-    fn on_add_value_callback(&mut self, fast: FI, value_nr: ValueNr);
-    fn on_remove_value_callback(&mut self, fast: FI, value_nr: ValueNr);
-    fn on_select_value_callback(&mut self, fast: FI, value_nr: ValueNr);
+    fn on_add_value_callback(&mut self, fast: FI, value_data: VD);
+    fn on_remove_value_callback(&mut self, fast: FI, value_data: VD);
+    fn on_select_value_callback(&mut self, fast: FI, value_data: VD);
 
-    fn on_push_add_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
-    fn on_pop_add_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
-    fn on_push_remove_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
-    fn on_pop_remove_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
-    fn on_push_select_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
-    fn on_pop_select_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
-    fn on_push_tree_build_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
-    fn on_pop_tree_build_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
-    fn on_push_tree_apply_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
-    fn on_pop_tree_apply_queue_callback(&mut self, fast: FI, value_nr: ValueNr);
+    fn on_push_queue_callback(&mut self, fast: FI, value_data: VD, i: usize);
+    fn on_pop_queue_callback(&mut self, fast: FI, value_data: VD, i: usize);
 
     fn on_add_depth_tree_identifier_callback(&mut self, fast: FI);
 

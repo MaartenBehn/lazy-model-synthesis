@@ -81,11 +81,11 @@ pub fn get_example_rules() -> Vec<Rule> {
                     offset: IVec2::new(-1, 0),
                 },
                 NeighborReq {
-                    req_types: vec![ValueType::Grass, ValueType::Sand],
+                    req_types: vec![ValueType::Sand],
                     offset: IVec2::new(0, 1),
                 },
                 NeighborReq {
-                    req_types: vec![ValueType::Grass, ValueType::Sand],
+                    req_types: vec![ValueType::Sand],
                     offset: IVec2::new(0, -1),
                 },
             ],

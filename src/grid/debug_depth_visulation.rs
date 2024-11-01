@@ -17,12 +17,10 @@ use octa_force::vulkan::ash::vk::AttachmentLoadOp;
 use crate::depth_search::node::DepthNode;
 use crate::depth_search::node_manager::DepthNodeManager;
 use crate::depth_search::value::DepthValue;
-use crate::dispatcher::{DepthTreeDispatcherT, WFCDispatcherT};
+use crate::dispatcher::{DepthTreeDispatcherT};
 use crate::grid::grid::{Grid, ValueData};
 use crate::grid::identifier::{ChunkNodeIndex, GlobalPos, PackedChunkNodeIndex};
-use crate::dispatcher::random_dispatcher::RandomDispatcher;
 use crate::dispatcher::vec_dispatcher::VecTreeDispatcher;
-use crate::go_back_in_time::node_manager::GoBackNodeManager;
 use crate::grid::render::node_render_data::NUM_VALUE_TYPES;
 use crate::grid::render::renderer::GridRenderer;
 use crate::grid::render::selector::Selector;
@@ -30,8 +28,7 @@ use crate::grid::rules::{get_example_rules, NUM_REQS, NUM_VALUES, ValueType};
 use crate::LazyModelSynthesis;
 use crate::general_data_structure::identifier::IdentifierConverterT;
 use crate::general_data_structure::node_storage::NodeStorageT;
-use crate::general_data_structure::value::{ValueDataT, ValueNr};
-use crate::go_back_in_time::value::GoBackValue;
+use crate::general_data_structure::value::{ValueDataT};
 use crate::util::state_saver::StateSaver;
 
 const CHUNK_SIZE: usize = 32;
@@ -42,8 +39,7 @@ pub struct GridDebugDepthVisulation {
     
     pub state_saver: StateSaver<
         DepthNodeManager<
-            Grid<DepthNode<ValueData>, DepthValue<ValueData>>, 
-            RandomDispatcher<ChunkNodeIndex>,
+            Grid<DepthNode<ValueData>, DepthValue<ValueData>>,
             VecTreeDispatcher,
             GlobalPos, 
             ChunkNodeIndex, 
@@ -120,31 +116,30 @@ impl GridDebugDepthVisulation {
         self.state_saver.set_next_tick(TickType::None);
         
         if DEBUG_MODE {
-            let mut wfc_d = self.state_saver.get_state().wfc_dispatcher.clone();
-            if wfc_d.pop_add().is_none() && wfc_d.pop_remove().is_none() && wfc_d.pop_select().is_none() {
-                let mut tree_d = self.state_saver.get_state().tree_dispatcher.clone();
-                
-                // Place one automatic at the start
-                if tree_d.pop_tree_build_tick().is_none() &&  tree_d.pop_tree_apply_tick().is_none() {
-                    let gi = GlobalPos(ivec2(fastrand::i32(0..32), fastrand::i32(0..32)));
-                    let fi = self.state_saver.get_state().node_storage.fast_from_general(gi);
-                    let node = self.state_saver.get_state().node_storage.get_node(fi);
-                    let v = &node.value;
-                    let next_vt = if v.is_some() {
-                        let vt = ValueType::try_from_primitive(v.unwrap().value_data.get_value_nr()).unwrap();
-                        if vt == ValueType::Grass {
-                            ValueType::Stone
-                        } else {
-                            ValueType::Grass
-                        }
+            let mut tree_d = self.state_saver.get_state().tree_dispatcher.clone();
+
+            // Place one automatic at the start
+            if tree_d.pop_tree_build_tick().is_none() &&  tree_d.pop_tree_apply_tick().is_none() {
+                let gi = GlobalPos(ivec2(fastrand::i32(0..32), fastrand::i32(0..32)));
+                let fi = self.state_saver.get_state().node_storage.fast_from_general(gi);
+                let node = self.state_saver.get_state().node_storage.get_node(fi);
+                let v = &node.value;
+                let next_vt = if v.is_some() {
+                    let vt = ValueType::try_from_primitive(v.unwrap().value_data.get_value_nr()).unwrap();
+                    if vt == ValueType::Stone {
+                        ValueType::Sand
+                    } else if vt == ValueType::Grass {
+                        ValueType::Stone
                     } else {
-                        ValueType::Grass
-                    };
+                        ValueType::Stone
+                    }
+                } else {
+                    ValueType::Grass
+                };
 
-                    self.state_saver.get_state_mut().select_value(gi, ValueData::new(next_vt));
+                self.state_saver.get_state_mut().select_value(gi, ValueData::new(next_vt));
 
-                    //self.run = false;
-                }
+                self.run = false;
             }
         }
         
@@ -252,8 +247,7 @@ impl GridDebugDepthVisulation {
                         ui.label("Place: ");
 
                         for i in 0..NUM_VALUE_TYPES {
-                            let value_nr = i as ValueNr;
-                            let value_type = ValueType::try_from_primitive(value_nr).unwrap();
+                            let value_type = ValueType::try_from_primitive(i).unwrap();
                             
                             let mut checked = self.selector.value_type_to_place == Some(value_type); 
                             ui.checkbox(&mut checked, format!("{:?}", value_type));
@@ -283,12 +277,11 @@ impl GridDebugDepthVisulation {
                             .render_data[chunk_node_index.node_index];
                         
                         for i in 0..NUM_VALUE_TYPES {
-                            let value_nr = i as ValueNr;
-                            
-                            let added = data.get_value_type(value_nr);
-                            let add_queue = data.get_add_queue(value_nr);
-                            let propagate_queue = data.get_remove_queue(value_nr);
-                            let select_queue = data.get_select_queue(value_nr);
+                            let value_data = ValueData::from_value_nr(i);
+                            let added = data.get_value_type(value_data);
+                            let add_queue = data.get_queue(value_data, 1);
+                            let remove_queue = data.get_queue(value_data, 2);
+                            let select_queue = data.get_queue(value_data, 3);
                             
                             div(ui, |ui| {
                                 ui.label(
@@ -297,27 +290,21 @@ impl GridDebugDepthVisulation {
                                         if added {"x"} else {"   "},
                                         ValueType::try_from_primitive(i).unwrap(),
                                         if add_queue {"A"} else {"   "},
-                                        if propagate_queue {"R"} else {"   "},
+                                        if remove_queue {"R"} else {"   "},
                                         if select_queue {"S"} else {"   "},
                                     ));
                             });
                         }
 
-                        let tree_identifier_node = self.state_saver
-                            .get_state_mut()
-                            .depth_tree_controller
-                            .identifier_nodes
-                            .get(&chunk_node_index);
-                        
-                        if tree_identifier_node.is_some() {
-                            let tree_identifier_node = tree_identifier_node.unwrap();
+                        let node = self.state_saver
+                            .get_state()
+                            .node_storage
+                            .get_node(chunk_node_index);
 
-                            ui.label("Tree Identifier Node:");
-
-                            for (value_nr, tree_index) in tree_identifier_node.tree_nodes.iter() {
-                                let value_type = ValueType::try_from_primitive(*value_nr).unwrap();
-                                ui.label(format!("{value_type:?} at Tree Index {tree_index}"));
-                            }
+                        ui.label("Tree Identifier:");
+                        for (value_nr, tree_index) in node.tree_nodes.iter() {
+                            let value_type = value_nr.value_type;
+                            ui.label(format!("{value_type:?} at Tree Index {tree_index}"));
                         }
                         
                     } else {
@@ -339,13 +326,8 @@ impl GridDebugDepthVisulation {
                     
                     let tree_identifiers = if self.selector.last_selected.is_some() {
                         let fast_identifier = grid.fast_from_general(GlobalPos(self.selector.last_selected.unwrap()));
-                        let node = &depth_tree_controller.identifier_nodes.get(&fast_identifier);
-                        if node.is_some() {
-                            let node = node.unwrap();
-                            node.tree_nodes.to_owned()
-                        } else {
-                            vec![]
-                        }
+                        let node = grid.get_node(fast_identifier);
+                        node.tree_nodes.to_owned()
                     } else {
                         vec![]
                     };
@@ -355,14 +337,14 @@ impl GridDebugDepthVisulation {
                         
                         let selected = tree_identifiers.iter().find(|(_, test_i)| i == *test_i).is_some();
                         
-                        let processed = if node.processed {"D"} else {""};
+                        let processed = if node.build {"D"} else {""};
                         let satisfied = if node.satisfied {"S"} else {""};
                         let level = node.level;
                         let pos = grid.general_from_fast(node.fast_identifier);
                         if selected {
                             ui.heading(RichText::new(format!(">>> Tree Node: {i} {level} {satisfied}{processed}")).strong());
                         } else {
-                            ui.heading(format!("Tree Node: {i} {satisfied}{processed}"));
+                            ui.heading(format!("Tree Node: {i} {level} {satisfied}{processed}"));
                         }
                         
                         ui.label(format!("Pos: [{:0>2},{:0>2}]", pos.0.x, pos.0.y));
@@ -375,7 +357,7 @@ impl GridDebugDepthVisulation {
                             let req_pos = grid.general_from_fast(req_at.fast_identifier);
                             ui.label(format!("ReqPos: [{},{}]", req_pos.0.x, req_pos.0.y));
                             for (i, (req_value_nr, tree_index)) in req_at.tree_nodes.iter().enumerate() {
-                                let value_type = ValueType::try_from_primitive(*req_value_nr).unwrap();
+                                let value_type = req_value_nr.value_type;
                                 
                                 if req_at.chosen_index == Some(i) {
                                     ui.label(format!("> {value_type:?} at Tree Index {tree_index}"));

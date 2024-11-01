@@ -3,14 +3,14 @@ pub type ReqCounterValue = i32;
 pub type ReqIndex = usize;
 
 // Remove general_data_structure if there are:
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 enum ReqOperation {
     NodeValueCounter,
     GlobalCounterLessThan,
     GlobalCounterMoreThan,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct ValueReq {
     counter: ReqCounterValue,
     operation: ReqOperation,

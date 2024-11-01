@@ -2,7 +2,7 @@ use crate::general_data_structure::req::{ReqIndex, ValueReq};
 use crate::general_data_structure::req_by::{ReqByIndex, ValueReqBy};
 use crate::general_data_structure::value::{ValueDataT, ValueT};
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Eq, PartialEq)]
 pub struct GoBackValue<VD> {
     pub value_data: VD,
     pub reqs: Vec<ValueReq>,

@@ -3,6 +3,7 @@
 use std::iter::{repeat, repeat_with};
 use std::marker::PhantomData;
 use fastrand::Rng;
+use num_enum::TryFromPrimitive;
 use octa_force::glam::IVec2;
 use crate::general_data_structure::node_storage::NodeStorageT;
 use crate::grid::rules::{NeighborReq, NUM_VALUES, Rule, ValueType};
@@ -10,7 +11,7 @@ use crate::grid::identifier::{ChunkNodeIndex, GlobalPos, PackedChunkNodeIndex};
 use crate::grid::render::node_render_data::NodeRenderData;
 use crate::util::get_num_bits_for_number;
 use crate::general_data_structure::node::{NodeT, ValueIndex};
-use crate::general_data_structure::value::{ValueDataT, ValueNr, ValueT};
+use crate::general_data_structure::value::{ValueDataT, ValueT};
 
 pub type ChunkIndex = usize;
 pub type NodeIndex = usize;
@@ -41,7 +42,7 @@ pub struct Chunk<NO: NodeT<V, ValueData>, V: ValueT<ValueData>> {
     pub render_data: Vec<NodeRenderData>
 }
 
-#[derive(Default, Copy, Clone)]
+#[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
 pub struct ValueData {
     pub value_type: ValueType,
 }
@@ -107,7 +108,7 @@ impl<NO: NodeT<V, ValueData>, V: ValueT<ValueData>> NodeStorageT<GlobalPos, Chun
         node_pos.0.x >= 0 && node_pos.0.y >= 0 && node_pos.0.x < self.chunk_size.x && node_pos.0.y < self.chunk_size.y
     }
 
-    fn value_data_matches_req(value_data: &ValueData, req: &Self::Req) -> bool {
+    fn value_nr_matches_req(value_data: ValueData, req: &Self::Req) -> bool {
         req.req_types.iter().find(|t| {
             value_data.value_type == **t
         }).is_some()
@@ -129,56 +130,24 @@ impl<NO: NodeT<V, ValueData>, V: ValueT<ValueData>> NodeStorageT<GlobalPos, Chun
     }
 
     // For Debugging
-    fn on_add_value_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
-        self.chunks[fast.chunk_index].render_data[fast.node_index].set_value_type(value_nr, true);
+    fn on_add_value_callback(&mut self, fast: ChunkNodeIndex, value_data: ValueData) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_value_type(value_data, true);
     }
 
-    fn on_remove_value_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
-        self.chunks[fast.chunk_index].render_data[fast.node_index].set_value_type(value_nr, false);
+    fn on_remove_value_callback(&mut self, fast: ChunkNodeIndex, value_data: ValueData) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_value_type(value_data, false);
     }
 
-    fn on_select_value_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
-        self.chunks[fast.chunk_index].render_data[fast.node_index].set_selected_value_type(value_nr);
+    fn on_select_value_callback(&mut self, fast: ChunkNodeIndex, value_data: ValueData) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_selected_value_type(value_data);
     }
 
-    fn on_push_add_queue_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
-        self.chunks[fast.chunk_index].render_data[fast.node_index].set_add_queue(value_nr,true);
+    fn on_push_queue_callback(&mut self, fast: ChunkNodeIndex, value_data: ValueData, i: usize) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_queue(value_data, true, i);
     }
 
-    fn on_pop_add_queue_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
-        self.chunks[fast.chunk_index].render_data[fast.node_index].set_add_queue(value_nr, false);
-    }
-
-    fn on_push_remove_queue_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
-        self.chunks[fast.chunk_index].render_data[fast.node_index].set_remove_queue(value_nr, true);
-    }
-
-    fn on_pop_remove_queue_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
-        self.chunks[fast.chunk_index].render_data[fast.node_index].set_remove_queue(value_nr, false);
-    }
-
-    fn on_push_select_queue_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
-        self.chunks[fast.chunk_index].render_data[fast.node_index].set_select_queue(value_nr, true);
-    }
-
-    fn on_pop_select_queue_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
-        self.chunks[fast.chunk_index].render_data[fast.node_index].set_select_queue(value_nr, false);
-    }
-
-    fn on_push_tree_build_queue_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
-        self.chunks[fast.chunk_index].render_data[fast.node_index].set_tree_build_queue(value_nr, true);
-    }
-
-    fn on_pop_tree_build_queue_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
-        self.chunks[fast.chunk_index].render_data[fast.node_index].set_tree_build_queue(value_nr, false);
-    }
-
-    fn on_push_tree_apply_queue_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
-        self.chunks[fast.chunk_index].render_data[fast.node_index].set_tree_apply_queue(value_nr, true);
-    }
-
-    fn on_pop_tree_apply_queue_callback(&mut self, fast: ChunkNodeIndex, value_nr: ValueNr) {
-        self.chunks[fast.chunk_index].render_data[fast.node_index].set_tree_apply_queue(value_nr, false);
+    fn on_pop_queue_callback(&mut self, fast: ChunkNodeIndex, value_data: ValueData , i: usize) {
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_queue(value_data, false, i);
     }
 
     fn on_add_depth_tree_identifier_callback(&mut self, fast: ChunkNodeIndex) {
@@ -235,7 +204,11 @@ impl ValueData {
 }
 
 impl ValueDataT for ValueData {
-    fn get_value_nr(&self) -> ValueNr {
+    fn get_value_nr(&self) -> u32 {
         self.value_type.into()
+    }
+
+    fn from_value_nr(value_nr: u32) -> Self {
+        ValueData::new(ValueType::try_from_primitive(value_nr).unwrap())
     }
 }

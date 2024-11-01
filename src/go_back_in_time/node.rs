@@ -1,12 +1,11 @@
 use std::iter;
-use std::marker::PhantomData;
 use crate::general_data_structure::node::{NodeT, ValueIndex};
-use crate::general_data_structure::value::{ValueDataT, ValueNr, ValueT};
+use crate::general_data_structure::value::{ValueDataT, ValueT};
 use crate::go_back_in_time::value::GoBackValue;
 
 pub type HistoryIndex = u16;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Eq, PartialEq)]
 pub struct GoBackNode<VD: ValueDataT> {
     pub values: Vec<GoBackValue<VD>>,
     pub last_removed: Vec<HistoryIndex>,
@@ -39,9 +38,9 @@ impl<VD: ValueDataT> GoBackNode<VD> {
     }
 
 
-    pub fn get_value_index_from_value_nr(&self, value_nr: ValueNr) -> Result<usize, usize> {
+    pub fn get_value_index_from_value_nr(&self, value_data: VD) -> Result<usize, usize> {
         self.values.binary_search_by(|v| {
-            v.get_value_data().get_value_nr().cmp(&value_nr)
+            v.get_value_data().get_value_nr().cmp(&value_data.get_value_nr())
         })
     }
 }

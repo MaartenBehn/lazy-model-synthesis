@@ -28,7 +28,7 @@ pub struct GridProfileGoBackVisulation {
     
     pub node_manager: GoBackNodeManager<
         Grid<GoBackNode<ValueData>, GoBackValue<ValueData>>,
-        RandomDispatcher<ChunkNodeIndex>,
+        RandomDispatcher<ChunkNodeIndex, ValueData>,
         GlobalPos,
         ChunkNodeIndex,
         PackedChunkNodeIndex,
@@ -66,7 +66,7 @@ impl GridProfileGoBackVisulation {
 
     fn create_node_manager() -> GoBackNodeManager<
         Grid<GoBackNode<ValueData>, GoBackValue<ValueData>>,
-        RandomDispatcher<ChunkNodeIndex>,
+        RandomDispatcher<ChunkNodeIndex, ValueData>,
         GlobalPos,
         ChunkNodeIndex,
         PackedChunkNodeIndex,

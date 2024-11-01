@@ -3,7 +3,7 @@ mod node;
 use crate::go_back_in_time::history::node::{HistoryNode, HistoryNodePacker, SummaryIndex};
 use crate::go_back_in_time::node::HistoryIndex;
 use crate::general_data_structure::identifier::PackedIdentifierT;
-use crate::general_data_structure::value::ValueNr;
+use crate::general_data_structure::value::ValueDataT;
 
 #[derive(Default, Clone)]
 pub struct History<NodeStorage: Clone> {
@@ -33,8 +33,8 @@ impl<NodeStorage: Clone> History<NodeStorage> {
         self.summaries.push(node_storage);
     }
 
-    pub fn add_change<I: PackedIdentifierT>(&mut self, packed_identifier: I, value_nr: ValueNr) -> HistoryIndex {
-        let history_node = self.packer.pack_change(packed_identifier, value_nr);
+    pub fn add_change<I: PackedIdentifierT, VD: ValueDataT>(&mut self, packed_identifier: I, value_data: VD) -> HistoryIndex {
+        let history_node = self.packer.pack_change(packed_identifier, value_data);
         let index = self.nodes.len() as HistoryIndex;
         self.nodes.push(history_node);
 
@@ -50,7 +50,7 @@ impl<NodeStorage: Clone> History<NodeStorage> {
         &self.summaries[summary_index as usize]
     }
 
-    pub fn get_change<I: PackedIdentifierT>(&self, index: usize) -> (I, ValueNr) {
+    pub fn get_change<I: PackedIdentifierT, VD: ValueDataT>(&self, index: usize) -> (I, VD) {
         self.packer.unpack_change(self.nodes[index])
     }
     

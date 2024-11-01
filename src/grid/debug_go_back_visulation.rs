@@ -23,7 +23,7 @@ use crate::grid::render::selector::Selector;
 use crate::grid::rules::{get_example_rules, NUM_REQS, NUM_VALUES, ValueType};
 use crate::LazyModelSynthesis;
 use crate::general_data_structure::identifier::IdentifierConverterT;
-use crate::general_data_structure::value::ValueNr;
+use crate::general_data_structure::value::ValueDataT;
 use crate::util::state_saver::StateSaver;
 use crate::go_back_in_time::node::GoBackNode;
 use crate::go_back_in_time::value::GoBackValue;
@@ -36,7 +36,7 @@ pub struct GridDebugGoBackVisulation {
     pub state_saver: StateSaver<
         GoBackNodeManager<
             Grid<GoBackNode<ValueData>, GoBackValue<ValueData>>, 
-            RandomDispatcher<ChunkNodeIndex>,
+            RandomDispatcher<ChunkNodeIndex, ValueData>,
             GlobalPos, 
             ChunkNodeIndex, 
             PackedChunkNodeIndex,
@@ -216,8 +216,7 @@ impl GridDebugGoBackVisulation {
                         ui.label("Place: ");
 
                         for i in 0..NUM_VALUE_TYPES {
-                            let value_nr = i as ValueNr;
-                            let value_type = ValueType::try_from_primitive(value_nr).unwrap();
+                            let value_type = ValueType::try_from_primitive(i).unwrap();
                             
                             let mut checked = self.selector.value_type_to_place == Some(value_type); 
                             ui.checkbox(&mut checked, format!("{:?}", value_type));
@@ -247,12 +246,11 @@ impl GridDebugGoBackVisulation {
                             .render_data[chunk_node_index.node_index];
                         
                         for i in 0..NUM_VALUE_TYPES {
-                            let value_nr = i as ValueNr;
-                            
-                            let added = data.get_value_type(value_nr);
-                            let add_queue = data.get_add_queue(value_nr);
-                            let propagate_queue = data.get_remove_queue(value_nr);
-                            let select_queue = data.get_select_queue(value_nr);
+                            let value_data = ValueData::from_value_nr(i);
+                            let added = data.get_value_type(value_data);
+                            let add_queue = data.get_queue(value_data, 1);
+                            let remove_queue = data.get_queue(value_data, 2);
+                            let select_queue = data.get_queue(value_data, 3);
                             
                             div(ui, |ui| {
                                 ui.label(
@@ -261,7 +259,7 @@ impl GridDebugGoBackVisulation {
                                         if added {"x"} else {"   "},
                                         ValueType::try_from_primitive(i).unwrap(),
                                         if add_queue {"A"} else {"   "},
-                                        if propagate_queue {"R"} else {"   "},
+                                        if remove_queue {"R"} else {"   "},
                                         if select_queue {"S"} else {"   "},
                                     ));
                             });
@@ -297,10 +295,9 @@ impl GridDebugGoBackVisulation {
                     
                     for (i, history_node) in history.nodes.iter().enumerate() {
                         if history_node.is_change() {
-                            let (packed_identifier, value_nr) = history.packer.unpack_change::<PackedChunkNodeIndex>(*history_node);
+                            let (packed_identifier, value_data) = history.packer.unpack_change::<PackedChunkNodeIndex, ValueData>(*history_node);
 
                             let pos = grid.general_from_packed(packed_identifier);
-                            let value_data = ValueType::try_from_primitive(value_nr).unwrap();
 
                             let mut added = false;
                             if self.selector.last_selected.is_some() {

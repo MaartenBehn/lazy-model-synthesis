@@ -1,5 +1,5 @@
 use std::fmt::Debug;
-use crate::general_data_structure::value::{ValueDataT, ValueNr, ValueT};
+use crate::general_data_structure::value::{ValueDataT, ValueT};
 
 pub type ValueIndex = usize;
 const VALUE_INDEX_NONE: ValueIndex = ValueIndex::MAX;
