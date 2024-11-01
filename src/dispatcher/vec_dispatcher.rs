@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 use crate::depth_search::depth_tree::DepthIndex;
 use crate::dispatcher::{DepthTreeDispatcherT, WFCDispatcherT};
 use crate::general_data_structure::identifier::FastIdentifierT;
-use crate::general_data_structure::ValueNr;
+use crate::general_data_structure::value::ValueNr;
 
 #[derive(Default, Clone)]
 pub struct VecWFCDispatcher<FI: FastIdentifierT> {

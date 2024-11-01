@@ -7,15 +7,16 @@ use crate::go_back_in_time::node::{GoBackNode, HistoryIndex};
 use crate::general_data_structure::node_storage::NodeStorageT;
 use crate::general_data_structure::identifier::{FastIdentifierT, GeneralIdentifierT, PackedIdentifierT};
 use crate::util::state_saver::State;
-use crate::general_data_structure::{ValueDataT, ValueNr};
 use crate::general_data_structure::node::{NodeT, ValueIndex};
 use crate::general_data_structure::req::ValueReq;
 use crate::general_data_structure::req_by::{ValueReqByPacker};
+use crate::general_data_structure::value::{ValueDataT, ValueNr, ValueT};
+use crate::go_back_in_time::value::GoBackValue;
 
 #[derive(Default, Clone)]
 pub struct GoBackNodeManager<N, D, GI, FI, PI, VD, const DEBUG: bool>
     where
-        N: NodeStorageT<GI, FI, PI, GoBackNode<VD>, VD>,
+        N: NodeStorageT<GI, FI, PI, GoBackNode<VD>, GoBackValue<VD>, VD>,
         D: WFCDispatcherT<FI>,
         GI: GeneralIdentifierT,
         FI: FastIdentifierT,
@@ -36,9 +37,9 @@ pub struct GoBackNodeManager<N, D, GI, FI, PI, VD, const DEBUG: bool>
     first_remove: bool
 }
 
-impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI, VD, DEBUG>
+impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI,  VD, DEBUG>
     where
-        N: NodeStorageT<GI, FI, PI, GoBackNode<VD>, VD>,
+        N: NodeStorageT<GI, FI, PI, GoBackNode<VD>, GoBackValue<VD>, VD>,
         D: WFCDispatcherT<FI>,
         GI: GeneralIdentifierT,
         FI: FastIdentifierT,
@@ -479,7 +480,7 @@ impl<N, D, GI, FI, PI, VD, const DEBUG: bool> GoBackNodeManager<N, D, GI, FI, PI
 
 impl<N, D, GI, FI, PI, VD, const DEBUG: bool> State for GoBackNodeManager<N, D, GI, FI, PI, VD, DEBUG>
     where
-        N: NodeStorageT<GI, FI, PI, GoBackNode<VD>, VD>,
+        N: NodeStorageT<GI, FI, PI, GoBackNode<VD>, GoBackValue<VD>, VD>,
         D: WFCDispatcherT<FI>,
         GI: GeneralIdentifierT,
         FI: FastIdentifierT,

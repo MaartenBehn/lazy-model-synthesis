@@ -2,7 +2,7 @@ use octa_force::glam::{IVec2};
 use crate::grid::grid::{Grid, ValueData};
 use crate::general_data_structure::identifier::{FastIdentifierT, GeneralIdentifierT, IdentifierConverterT, PackedIdentifierT};
 use crate::general_data_structure::node::NodeT;
-
+use crate::general_data_structure::value::ValueT;
 
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq, Hash)]
 pub struct GlobalPos(pub IVec2);
@@ -33,7 +33,7 @@ impl PackedIdentifierT for PackedChunkNodeIndex {
 }
 
 
-impl<NO: NodeT<ValueData>> IdentifierConverterT<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex> for Grid<NO> {
+impl<NO: NodeT<V, ValueData>, V: ValueT<ValueData>,> IdentifierConverterT<GlobalPos, ChunkNodeIndex, PackedChunkNodeIndex> for Grid<NO, V> {
     fn fast_from_general(&self, i: GlobalPos) -> ChunkNodeIndex {
         self.get_chunk_and_node_index_from_global_pos(i)
     }

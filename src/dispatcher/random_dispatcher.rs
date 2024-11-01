@@ -1,7 +1,7 @@
 use fastrand::Rng;
 use crate::dispatcher::WFCDispatcherT;
 use crate::general_data_structure::identifier::FastIdentifierT;
-use crate::general_data_structure::ValueNr;
+use crate::general_data_structure::value::ValueNr;
 
 #[derive(Default, Clone)]
 pub struct RandomDispatcher<FI> {

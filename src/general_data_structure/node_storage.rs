@@ -1,16 +1,18 @@
 use crate::depth_search::depth_tree::DepthIndex;
 use crate::general_data_structure::identifier::{FastIdentifierT, GeneralIdentifierT, IdentifierConverterT, PackedIdentifierT};
-use crate::general_data_structure::{ValueDataT, ValueNr};
 use crate::general_data_structure::node::{NodeT, ValueIndex};
+use crate::general_data_structure::value::{ValueDataT, ValueNr, ValueT};
 
-pub trait NodeStorageT<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: PackedIdentifierT, NO: NodeT<VD>, VD: ValueDataT>: 
+pub trait NodeStorageT<GI: GeneralIdentifierT, FI: FastIdentifierT, PI: PackedIdentifierT, NO: NodeT<V, VD>, V: ValueT<VD>, VD: ValueDataT>: 
     IdentifierConverterT<GI, FI, PI> + Default + Clone
 {
     type Req: Clone;
     
     fn get_node(&self, fast_lookup: FI) -> &NO;
-    fn get_node_mut(&mut self, fast_lookup: FI) -> &mut NO;
     fn set_node(&mut self, fast_lookup: FI, node: NO);
+    fn get_node_mut(&mut self, fast_lookup: FI) -> &mut NO;
+    fn get_node_iter(&self) -> impl IntoIterator<Item=(FI, NO)>;
+    fn get_value_data_iter(&self) -> impl IntoIterator<Item=VD>;
 
     fn get_num_reqs_for_value_data(&mut self, value_data: &VD) -> usize;
     fn get_req_for_value_data(&mut self, value_data: &VD, index: usize) -> Self::Req;

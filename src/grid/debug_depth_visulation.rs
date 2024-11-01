@@ -16,6 +16,7 @@ use octa_force::puffin_egui::puffin;
 use octa_force::vulkan::ash::vk::AttachmentLoadOp;
 use crate::depth_search::node::DepthNode;
 use crate::depth_search::node_manager::DepthNodeManager;
+use crate::depth_search::value::DepthValue;
 use crate::dispatcher::{DepthTreeDispatcherT, WFCDispatcherT};
 use crate::grid::grid::{Grid, ValueData};
 use crate::grid::identifier::{ChunkNodeIndex, GlobalPos, PackedChunkNodeIndex};
@@ -29,8 +30,9 @@ use crate::grid::rules::{get_example_rules, NUM_REQS, NUM_VALUES, ValueType};
 use crate::LazyModelSynthesis;
 use crate::general_data_structure::identifier::IdentifierConverterT;
 use crate::general_data_structure::node_storage::NodeStorageT;
+use crate::general_data_structure::value::{ValueDataT, ValueNr};
+use crate::go_back_in_time::value::GoBackValue;
 use crate::util::state_saver::StateSaver;
-use crate::general_data_structure::{ValueDataT, ValueNr};
 
 const CHUNK_SIZE: usize = 32;
 const DEBUG_MODE: bool = true;
@@ -40,7 +42,7 @@ pub struct GridDebugDepthVisulation {
     
     pub state_saver: StateSaver<
         DepthNodeManager<
-            Grid<DepthNode<ValueData>>, 
+            Grid<DepthNode<ValueData>, DepthValue<ValueData>>, 
             RandomDispatcher<ChunkNodeIndex>,
             VecTreeDispatcher,
             GlobalPos, 
@@ -87,7 +89,7 @@ impl GridDebugDepthVisulation {
             gui,
             grid_renderer,
             selector,
-            run: true,
+            run: false,
             run_ticks_per_frame: 10,
             pointer_pos_in_grid: None,
         })
@@ -117,7 +119,6 @@ impl GridDebugDepthVisulation {
         }
         self.state_saver.set_next_tick(TickType::None);
         
-        
         if DEBUG_MODE {
             let mut wfc_d = self.state_saver.get_state().wfc_dispatcher.clone();
             if wfc_d.pop_add().is_none() && wfc_d.pop_remove().is_none() && wfc_d.pop_select().is_none() {
@@ -128,10 +129,14 @@ impl GridDebugDepthVisulation {
                     let gi = GlobalPos(ivec2(fastrand::i32(0..32), fastrand::i32(0..32)));
                     let fi = self.state_saver.get_state().node_storage.fast_from_general(gi);
                     let node = self.state_saver.get_state().node_storage.get_node(fi);
-                    let v = &node.values[0];
-                    let vt = ValueType::try_from_primitive(v.value_data.get_value_nr()).unwrap();
-                    let next_vt = if vt == ValueType::Grass {
-                        ValueType::Stone
+                    let v = &node.value;
+                    let next_vt = if v.is_some() {
+                        let vt = ValueType::try_from_primitive(v.unwrap().value_data.get_value_nr()).unwrap();
+                        if vt == ValueType::Grass {
+                            ValueType::Stone
+                        } else {
+                            ValueType::Grass
+                        }
                     } else {
                         ValueType::Grass
                     };

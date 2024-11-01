@@ -1,38 +1,25 @@
-use crate::general_data_structure::{Value, ValueDataT, ValueNr};
+use crate::depth_search::value::DepthValue;
 use crate::general_data_structure::node::{NodeT, ValueIndex};
+use crate::general_data_structure::value::{ValueDataT, ValueNr, ValueT};
 
-#[derive(Clone, Default)]
+#[derive(Copy, Clone, Default)]
 pub struct DepthNode<VD: ValueDataT> {
-    pub values: Vec<Value<VD>>,
+    pub value: Option<DepthValue<VD>>,
 }
 
-impl<VD: ValueDataT> NodeT<VD> for DepthNode<VD> {
+impl<VD: ValueDataT> NodeT<DepthValue<VD>, VD> for DepthNode<VD> {
     fn new(num_values: usize) -> Self {
         DepthNode {
-            values: vec![],
+            value: None,
         }
     }
 
-    fn get_values(&self) -> &[Value<VD>] {
-        &self.values
+    fn get_values(&self) -> &[DepthValue<VD>] {
+        self.value.as_slice()
     }
 
-    fn get_values_mut(&mut self) -> &mut [Value<VD>] {
-        &mut self.values
-    }
-
-    fn set_values(&mut self, values: Vec<Value<VD>>) {
-        self.values = values;
-    }
-
-    fn add_value_with_index(&mut self, value_index: ValueIndex, value_data: VD) {
-        self.values.insert(value_index as usize, Value::new(value_data))
-    }
-
-    fn get_value_index_from_value_nr(&self, value_nr: ValueNr) -> Result<usize, usize> {
-        self.values.binary_search_by(|v| {
-            v.value_data.get_value_nr().cmp(&value_nr)
-        })
+    fn get_values_mut(&mut self) -> &mut [DepthValue<VD>] {
+        self.value.as_mut_slice()
     }
 }
 

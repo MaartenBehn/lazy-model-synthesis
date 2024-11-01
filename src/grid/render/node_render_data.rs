@@ -1,6 +1,4 @@
-
-use crate::general_data_structure::ValueNr;
-
+use crate::general_data_structure::value::ValueNr;
 
 const SELECTOR_BIT: usize = 31;
 const NEXT_BIT: usize = 30;

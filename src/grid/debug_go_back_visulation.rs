@@ -23,9 +23,10 @@ use crate::grid::render::selector::Selector;
 use crate::grid::rules::{get_example_rules, NUM_REQS, NUM_VALUES, ValueType};
 use crate::LazyModelSynthesis;
 use crate::general_data_structure::identifier::IdentifierConverterT;
+use crate::general_data_structure::value::ValueNr;
 use crate::util::state_saver::StateSaver;
-use crate::general_data_structure::ValueNr;
 use crate::go_back_in_time::node::GoBackNode;
+use crate::go_back_in_time::value::GoBackValue;
 
 const CHUNK_SIZE: usize = 32;
 
@@ -34,7 +35,7 @@ pub struct GridDebugGoBackVisulation {
     
     pub state_saver: StateSaver<
         GoBackNodeManager<
-            Grid<GoBackNode<ValueData>>, 
+            Grid<GoBackNode<ValueData>, GoBackValue<ValueData>>, 
             RandomDispatcher<ChunkNodeIndex>,
             GlobalPos, 
             ChunkNodeIndex, 

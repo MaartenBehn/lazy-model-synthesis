@@ -2,7 +2,7 @@ pub mod vec_dispatcher;
 pub mod random_dispatcher;
 
 use crate::depth_search::depth_tree::DepthIndex;
-use crate::general_data_structure::ValueNr;
+use crate::general_data_structure::value::ValueNr;
 
 pub trait WFCDispatcherT<FastIdentifier>: Default + Clone {
     fn push_add(&mut self, fast_identifier: FastIdentifier, value_nr: ValueNr);

@@ -1,5 +1,6 @@
 use octa_force::glam::{IVec2, Vec2};
 use crate::general_data_structure::node::NodeT;
+use crate::general_data_structure::value::ValueT;
 use crate::grid::grid::{Grid, ValueData};
 use crate::grid::identifier::GlobalPos;
 use crate::grid::rules::ValueType;
@@ -19,7 +20,7 @@ impl Selector {
         }
     }
 
-    pub fn add_to_render_data<NO: NodeT<ValueData>>(&mut self, pos: Option<Vec2>, grid: &mut Grid<NO>) {
+    pub fn add_to_render_data<NO: NodeT<V, ValueData>, V: ValueT<ValueData>,>(&mut self, pos: Option<Vec2>, grid: &mut Grid<NO, V>) {
         if pos.is_none() {
             self.last_selected = None;
             return;
@@ -43,7 +44,7 @@ impl Selector {
         self.last_selected = Some(node_pos);
     }
     
-    pub fn clear_from_render_data<NO: NodeT<ValueData>>(&mut self, grid: &mut Grid<NO>) {
+    pub fn clear_from_render_data<NO: NodeT<V, ValueData>, V: ValueT<ValueData>,>(&mut self, grid: &mut Grid<NO, V>) {
         if let Some(last_pos) = self.last_selected {
             let chunk_node_index = grid
                 .get_chunk_and_node_index_from_global_pos(GlobalPos(last_pos));

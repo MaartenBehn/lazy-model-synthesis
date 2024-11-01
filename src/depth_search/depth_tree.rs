@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crate::general_data_structure::identifier::FastIdentifierT;
-use crate::general_data_structure::{ValueDataT, ValueNr};
+use crate::general_data_structure::value::{ValueDataT, ValueNr};
 
 pub type DepthIndex = usize;
 pub type DepthReqATIndex = usize;

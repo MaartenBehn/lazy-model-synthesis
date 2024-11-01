@@ -3,7 +3,7 @@ mod node;
 use crate::go_back_in_time::history::node::{HistoryNode, HistoryNodePacker, SummaryIndex};
 use crate::go_back_in_time::node::HistoryIndex;
 use crate::general_data_structure::identifier::PackedIdentifierT;
-use crate::general_data_structure::ValueNr;
+use crate::general_data_structure::value::ValueNr;
 
 #[derive(Default, Clone)]
 pub struct History<NodeStorage: Clone> {

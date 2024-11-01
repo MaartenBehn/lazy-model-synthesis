@@ -12,8 +12,10 @@ use octa_force::vulkan::ash::vk::AttachmentLoadOp;
 use crate::grid::grid::{Grid, ValueData};
 use crate::dispatcher::random_dispatcher::RandomDispatcher;
 use crate::general_data_structure::node::NodeT;
+use crate::general_data_structure::value::ValueT;
 use crate::go_back_in_time::node::GoBackNode;
 use crate::go_back_in_time::node_manager::GoBackNodeManager;
+use crate::go_back_in_time::value::GoBackValue;
 use crate::grid::rules::{get_example_rules, NUM_REQS, NUM_VALUES, ValueType};
 use crate::grid::identifier::{ChunkNodeIndex, GlobalPos, PackedChunkNodeIndex};
 use crate::grid::render::renderer::GridRenderer;
@@ -25,7 +27,7 @@ pub struct GridProfileGoBackVisulation {
     pub gui: Gui,
     
     pub node_manager: GoBackNodeManager<
-        Grid<GoBackNode<ValueData>>,
+        Grid<GoBackNode<ValueData>, GoBackValue<ValueData>>,
         RandomDispatcher<ChunkNodeIndex>,
         GlobalPos,
         ChunkNodeIndex,
@@ -63,7 +65,7 @@ impl GridProfileGoBackVisulation {
     }
 
     fn create_node_manager() -> GoBackNodeManager<
-        Grid<GoBackNode<ValueData>>,
+        Grid<GoBackNode<ValueData>, GoBackValue<ValueData>>,
         RandomDispatcher<ChunkNodeIndex>,
         GlobalPos,
         ChunkNodeIndex,
