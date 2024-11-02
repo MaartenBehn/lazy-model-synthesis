@@ -39,7 +39,7 @@ pub struct GridDebugDepthVisulation {
     
     pub state_saver: StateSaver<
         DepthNodeManager<
-            Grid<DepthNode<ValueData>, DepthValue<ValueData>>,
+            Grid<DepthNode<ValueData, ChunkNodeIndex>, DepthValue<ValueData>>,
             VecTreeDispatcher,
             GlobalPos, 
             ChunkNodeIndex, 
@@ -301,11 +301,26 @@ impl GridDebugDepthVisulation {
                             .node_storage
                             .get_node(chunk_node_index);
 
+                        if node.fixed_value.is_some() {
+                            ui.label(format!("Fixed Value: {:?}",  node.fixed_value.unwrap().value_type));
+                        }
+
                         ui.label("Tree Identifier:");
                         for (value_nr, tree_index) in node.tree_nodes.iter() {
                             let value_type = value_nr.value_type;
                             ui.label(format!("{value_type:?} at Tree Index {tree_index}"));
                         }
+
+                        ui.label("Tree Reqs at:");
+                        for (fast, reqs_at) in node.reqs_at.iter() {
+                            let identifier = self.state_saver.get_state().node_storage.general_from_fast(*fast);
+                            ui.label(format!("[{:0>2} {:0>2}]", identifier.0.x, identifier.0.y));
+
+                            for (tree_index, req_at_index) in reqs_at.iter() {
+                                ui.label(format!("Tree Node {tree_index} Req_at {req_at_index}"));
+                            }
+                        }
+                        
                         
                     } else {
                         div(ui, |ui| {
@@ -349,8 +364,8 @@ impl GridDebugDepthVisulation {
                         
                         ui.label(format!("Pos: [{:0>2},{:0>2}]", pos.0.x, pos.0.y));
                         ui.label(format!("Value: {:?}", node.value_data.value_type));
+                        
                         ui.label("Reqs:");
-
                         for req_at in node.reqs.iter() {
                             ui.separator();
                             
@@ -366,6 +381,13 @@ impl GridDebugDepthVisulation {
                                 }
                                 
                             }
+                        }
+
+                        ui.label("Req by:");
+                        for (tree_index, req_at_index, in_req_at_index) in node.req_by.iter() {
+                            ui.separator();
+
+                            ui.label(format!("Tree Node {tree_index} req_at index {req_at_index} req index {in_req_at_index}"));
                         }
                     }
                 });

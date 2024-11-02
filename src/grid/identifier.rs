@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use octa_force::glam::{IVec2};
 use crate::grid::grid::{Grid, ValueData};
 use crate::general_data_structure::identifier::{FastIdentifierT, GeneralIdentifierT, IdentifierConverterT, PackedIdentifierT};
@@ -7,13 +8,13 @@ use crate::general_data_structure::value::ValueT;
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq, Hash)]
 pub struct GlobalPos(pub IVec2);
 
-#[derive(Copy, Clone, Default, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct ChunkNodeIndex {
     pub chunk_index: usize,
     pub node_index: usize,
 }
 
-#[derive(Copy, Clone, Default, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct PackedChunkNodeIndex(pub u32);
 
 impl GeneralIdentifierT for GlobalPos {
@@ -66,6 +67,19 @@ impl<NO: NodeT<V, ValueData>, V: ValueT<ValueData>,> IdentifierConverterT<Global
         }
     }
 }
+
+impl PartialOrd for GlobalPos {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.0.x.cmp(&other.0.x).then(self.0.y.cmp(&other.0.y)))
+    }
+}
+
+impl Ord for GlobalPos {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.x.cmp(&other.0.x).then(self.0.y.cmp(&other.0.y))
+    }
+}
+
 
 
 

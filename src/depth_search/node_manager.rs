@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use octa_force::log::{debug, error, info, warn};
 use octa_force::puffin_egui::puffin;
-use crate::depth_search::depth_tree::{DepthTreeController, DepthTreeNode, ReqAtIdentifier, DepthIndex};
+use crate::depth_search::depth_tree::{DepthTreeController, DepthTreeNode, ReqAtIdentifier, DepthIndex, DepthReqATIndex};
 use crate::depth_search::node::DepthNode;
 use crate::depth_search::value::DepthValue;
 use crate::dispatcher::{DepthTreeDispatcherT, WFCDispatcherT, TREE_APPLY_INDEX, TREE_BUILD_INDEX, TREE_CHECK_INDEX};
@@ -14,7 +14,7 @@ use crate::general_data_structure::value::{ValueDataT, ValueT};
 #[derive(Default, Clone)]
 pub struct DepthNodeManager<N, TreeD, GI, FI, PI, VD, const DEBUG: bool>
     where
-        N: NodeStorageT<GI, FI, PI, DepthNode<VD>, DepthValue<VD>, VD>,
+        N: NodeStorageT<GI, FI, PI, DepthNode<VD, FI>, DepthValue<VD>, VD>,
         TreeD: DepthTreeDispatcherT,
         GI: GeneralIdentifierT,
         FI: FastIdentifierT,
@@ -36,7 +36,7 @@ pub struct DepthNodeManager<N, TreeD, GI, FI, PI, VD, const DEBUG: bool>
 
 impl<N, TreeD, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, TreeD, GI, FI, PI, VD, DEBUG>
     where
-        N: NodeStorageT<GI, FI, PI, DepthNode<VD>, DepthValue<VD>, VD>,
+        N: NodeStorageT<GI, FI, PI, DepthNode<VD, FI>, DepthValue<VD>, VD>,
         TreeD: DepthTreeDispatcherT,
         GI: GeneralIdentifierT,
         FI: FastIdentifierT,
@@ -138,6 +138,8 @@ impl<N, TreeD, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, TreeD, GI,
             let req_node_at_index = depth_tree_node.reqs.len();
             
             if req_node.fixed_value.is_some() {
+                // The node is fixed so we have to choose that one.
+                
                 if !N::value_nr_matches_req(req_node.fixed_value.unwrap(), &req) {
                     // A Req points to a node that is fixed, but the fixed value is not possible
                     // -> This node is not possible
@@ -153,87 +155,80 @@ impl<N, TreeD, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, TreeD, GI,
                         }
                     }
                     break;
-                } else {
-                    
-                    let req_value_data =  req_node.fixed_value.unwrap();
-                    let req_tree_node_index = self.get_req_tree_node_index(
-                        &mut req_node, 
-                        req_fast_identifier,
-                        req_value_data, 
-                        &depth_tree_node);
-                    
                 }
-            }
-            
-            
 
-            let mut fixed_req_node_index = None;
-            let mut already_chosen_req_node_index = None;
-            let mut satisfied_req_node_index = None;
-            
-            let num_possible_value_data = N::get_num_possible_value_data_for_req(&req);
-            for req_value_data_index in 0..num_possible_value_data {
-                let req_value_data = N::get_value_data_for_req(&req, req_value_data_index);
-                
-                let req_tree_node_index = self.get_req_tree_node_index(&mut req_node, req_fast_identifier, req_value_data, &depth_tree_node);
+                let req_value_data =  req_node.fixed_value.unwrap();
+                let req_tree_node_index = self.get_req_tree_node_index(
+                    &mut req_node,
+                    req_fast_identifier,
+                    req_value_data,
+                    &depth_tree_node);
 
-                let mut req_tree_node = self.depth_tree_controller.nodes[req_tree_node_index].clone();
-
-                let req_at_node_index = req_nodes_at.tree_nodes.len();
-                
-                // Check if the node has been chosen
-                if already_chosen_req_node_index.is_none() {
-                    for (test_tree_index, test_req_at_index, test_req_index_in_req_at) in req_tree_node.req_by.iter() {
-                        let test_req_at = &self.depth_tree_controller.nodes[*test_tree_index].reqs[*test_req_at_index];
-
-                        if test_req_at.chosen_index == Some(*test_req_index_in_req_at) {
-                            already_chosen_req_node_index = Some(req_at_node_index);
-                            break
-                        }
-                    }
-                }
-                
-                if req_node.value == Some(DepthValue::new(req_tree_node.value_data)) {
-                    req_tree_node.satisfied = true;
-                    
-                    if satisfied_req_node_index.is_none() {
-                        satisfied_req_node_index = Some(req_at_node_index);
-                    }
-                }
+                let req_tree_node = &mut self.depth_tree_controller.nodes[req_tree_node_index];
 
                 // Mark this req at as incoming edge
-                req_tree_node.req_by.push((index, req_node_at_index, req_at_node_index));
+                req_tree_node.req_by.push((index, req_node_at_index, 0));
                 req_nodes_at.tree_nodes.push((req_value_data, req_tree_node_index));
-
+                req_nodes_at.chosen_index = Some(0);
+            } else {
                 
-                self.depth_tree_controller.nodes[req_tree_node_index] = req_tree_node;
+                let num_possible_value_data = N::get_num_possible_value_data_for_req(&req);
+                let mut possible_nodes_to_choose = Vec::with_capacity(num_possible_value_data);
+                
+                for req_value_data_index in 0..num_possible_value_data {
+                    let req_value_data = N::get_value_data_for_req(&req, req_value_data_index);
+
+                    let req_tree_node_index = self.get_req_tree_node_index(&mut req_node, req_fast_identifier, req_value_data, &depth_tree_node);
+
+                    let mut req_tree_node = self.depth_tree_controller.nodes[req_tree_node_index].clone();
+
+                    let req_at_node_index = req_nodes_at.tree_nodes.len();
+                    
+                    let satisfied = req_node.value == Some(DepthValue::new(req_tree_node.value_data));
+                    req_tree_node.satisfied = satisfied;
+
+                    // Mark this req at as incoming edge
+                    req_tree_node.req_by.push((index, req_node_at_index, req_at_node_index));
+                    req_nodes_at.tree_nodes.push((req_value_data, req_tree_node_index));
+                    
+                    self.depth_tree_controller.nodes[req_tree_node_index] = req_tree_node;
+                    
+                    possible_nodes_to_choose.push((req_at_node_index, satisfied))
+                }
+
+                for (fast, other_reqs_at_list) in req_node.reqs_at.iter() {
+                    let other_node = self.node_storage.get_node(*fast);
+                    for (node_index, req_at_index) in other_reqs_at_list.iter() {
+                        let other_tree_node = &self.depth_tree_controller.nodes[*node_index];
+                        
+                        if o
+                        
+                    }
+                }
+
+                // Choose the node for this req at
+                let chosen_req_node_index = if already_chosen_req_node_index.is_some() {
+                    already_chosen_req_node_index.unwrap()
+                } else if satisfied_req_node_index.is_some() {
+                    satisfied_req_node_index.unwrap()
+                } else {
+                    // Mark as needs further work
+                    needs_tick_nodes.push((req_nodes_at.tree_nodes[0].1, req_nodes_at.tree_nodes.len()));
+
+                    // Just choose the first
+                    0
+                };
+                req_nodes_at.chosen_index = Some(chosen_req_node_index);
             }
             
-            // Choose the node for this req at
-            let chosen_req_node_index = if fixed_req_node_index.is_some() {
-                fixed_req_node_index.unwrap()
-            } else if already_chosen_req_node_index.is_some() {
-                already_chosen_req_node_index.unwrap()
-            } else if satisfied_req_node_index.is_some() {
-                satisfied_req_node_index.unwrap()
-            } else {
-                // Mark as needs further work
-                needs_tick_nodes.push((req_nodes_at.tree_nodes[0].1, req_nodes_at.tree_nodes.len()));
-                
-                // Just choose the first
-                0
-            };
-            req_nodes_at.chosen_index = Some(chosen_req_node_index);
-            
             depth_tree_node.reqs.push(req_nodes_at);
-
+            Self::add_req_at_to_depth_node(&mut req_node, depth_tree_node.fast_identifier, index, req_node_at_index);
+            
             self.node_storage.set_node(req_fast_identifier, req_node);
         }
-
         self.depth_tree_controller.nodes[index] = depth_tree_node;
-
-        needs_tick_nodes.sort_by(|(_, a), (_, b)| a.cmp(&b));
         
+        needs_tick_nodes.sort_by(|(_, a), (_, b)| a.cmp(&b));
         for (needs_tick_index, _) in needs_tick_nodes {
             let tree_node = &self.depth_tree_controller.nodes[needs_tick_index];
             if tree_node.build {
@@ -248,9 +243,9 @@ impl<N, TreeD, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, TreeD, GI,
         }
     }
     
-    pub fn get_req_tree_node_index(
+    fn get_req_tree_node_index(
         &mut self, 
-        req_node: &mut DepthNode<VD>,
+        req_node: &mut DepthNode<VD, FI>,
         req_fast_identifier: FI,
         req_value_data: VD,  
         depth_tree_node: &DepthTreeNode<FI, VD>) -> usize {
@@ -272,6 +267,19 @@ impl<N, TreeD, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, TreeD, GI,
             req_tree_node_index
         } else {
             req_node.tree_nodes[res.unwrap()].1
+        }
+    }
+    
+    fn add_req_at_to_depth_node(req_node: &mut DepthNode<VD, FI>, req_fast_identifier: FI, req_tree_node_index: DepthIndex, req_req_at_index: DepthReqATIndex) {
+        let res = req_node.reqs_at.binary_search_by(|(f, _)| {
+            f.cmp(&req_fast_identifier)
+        });
+        if res.is_err() {
+            let i = res.err().unwrap();
+            req_node.reqs_at.insert(i,(req_fast_identifier, vec![(req_tree_node_index, req_req_at_index)]))
+        } else {
+            let i = res.unwrap();
+            req_node.reqs_at[i].1.push((req_tree_node_index, req_req_at_index));
         }
     }
 
@@ -309,6 +317,7 @@ impl<N, TreeD, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, TreeD, GI,
             }
         }
         node.tree_nodes.clear();
+        node.reqs_at.clear();
 
         node.value = Some(DepthValue::new(depth_tree_node.value_data));
 
@@ -351,7 +360,7 @@ impl<N, TreeD, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, TreeD, GI,
 
 impl<N, TreeD, GI, FI, PI,  VD, const DEBUG: bool> State for DepthNodeManager<N, TreeD, GI, FI, PI, VD, DEBUG>
     where
-        N: NodeStorageT<GI, FI, PI, DepthNode<VD>, DepthValue<VD>, VD>,
+        N: NodeStorageT<GI, FI, PI, DepthNode<VD, FI>, DepthValue<VD>, VD>,
         TreeD: DepthTreeDispatcherT,
         GI: GeneralIdentifierT,
         FI: FastIdentifierT,

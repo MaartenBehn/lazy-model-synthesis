@@ -13,6 +13,7 @@ pub struct VecWFCDispatcher<FI: FastIdentifierT, VD: ValueDataT> {
 
 #[derive(Default, Clone)]
 pub struct VecTreeDispatcher {
+    tree_check: VecDeque<DepthIndex>,
     tree_build: VecDeque<DepthIndex>,
     tree_apply: VecDeque<DepthIndex>,
 }
@@ -52,11 +53,11 @@ impl<FI: FastIdentifierT, VD: ValueDataT> WFCDispatcherT<FI, VD> for VecWFCDispa
 impl DepthTreeDispatcherT for VecTreeDispatcher {
 
     fn push_tree_check_tick(&mut self, tree_index: DepthIndex) {
-        self.tree_build.push_back(tree_index)
+        self.tree_check.push_back(tree_index)
     }
 
     fn pop_tree_check_tick(&mut self) -> Option<DepthIndex> {
-        self.tree_build.pop_back()
+        self.tree_check.pop_back()
     }
     fn push_tree_build_tick(&mut self, tree_index: DepthIndex) {
         self.tree_build.push_back(tree_index)
