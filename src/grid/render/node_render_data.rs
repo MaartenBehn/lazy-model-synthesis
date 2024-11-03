@@ -5,7 +5,7 @@ const SELECTOR_BIT: usize = 31;
 const NEXT_BIT: usize = 30;
 const HAS_TREE_IDENTIFIER_BIT: usize = 29;
 
-const BITS_PER_VALUE: usize = 3;
+const BITS_PER_VALUE: usize = 4;
 const ADDED_OFFSET: usize = 0;
 
 const MAX_SELECTED_BITS: usize = 4;

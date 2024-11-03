@@ -22,7 +22,6 @@ pub struct DepthTreeController<FI: FastIdentifierT, VD: ValueDataT> {
 pub struct DepthTreeNode<FI: FastIdentifierT, VD: ValueDataT> {
     pub fast_identifier: FI,
     pub value_data: VD,
-    pub level: DepthLevel,
     pub reqs: Vec<ReqAtIdentifier<FI, VD>>,
     pub req_by: Vec<(DepthTreeIndex, ReqAtIndex, InReqAtIndex)>,
     pub satisfied: bool,
@@ -61,11 +60,10 @@ impl<FI: FastIdentifierT, VD: ValueDataT> DepthTreeController<FI, VD> {
 }
 
 impl<FI: FastIdentifierT, VD: ValueDataT> DepthTreeNode<FI, VD>{
-    pub fn new(fast_identifier: FI, value_data: VD, level: DepthLevel) -> Self {
+    pub fn new(fast_identifier: FI, value_data: VD) -> Self {
         Self { 
             fast_identifier, 
             value_data,
-            level,
             reqs: vec![],
             req_by: vec![],
             satisfied: false,

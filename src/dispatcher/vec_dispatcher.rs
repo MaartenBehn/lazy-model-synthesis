@@ -57,14 +57,14 @@ impl DepthTreeDispatcherT for VecTreeDispatcher {
     }
 
     fn pop_tree_check_tick(&mut self) -> Option<DepthTreeIndex> {
-        self.tree_check.pop_back()
+        self.tree_check.pop_front()
     }
     fn push_tree_build_tick(&mut self, tree_index: DepthTreeIndex) {
         self.tree_build.push_back(tree_index)
     }
 
     fn pop_tree_build_tick(&mut self) -> Option<DepthTreeIndex> {
-        self.tree_build.pop_back()
+        self.tree_build.pop_front()
     }
 
     fn push_tree_apply_tick(&mut self, tree_index: DepthTreeIndex) {
@@ -72,7 +72,7 @@ impl DepthTreeDispatcherT for VecTreeDispatcher {
     }
 
     fn pop_tree_apply_tick(&mut self) -> Option<DepthTreeIndex> {
-        self.tree_apply.pop_back()
+        self.tree_apply.pop_front()
     }
 
     fn apply_contains_node(&mut self, tree_index: DepthTreeIndex) -> bool {

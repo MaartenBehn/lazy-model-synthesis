@@ -280,7 +280,18 @@ impl GridDebugDepthVisulation {
                             .node_storage
                             .get_node(chunk_node_index);
 
+                        if node.level.is_some() {
+                            ui.label(format!("Level: {}", node.level.unwrap()));
+                        }
+                        
                         for (i, (value_data, tree_index)) in node.tree_nodes.iter().enumerate() {
+                            let tree_node = &self.state_saver
+                                .get_state()
+                                .depth_tree_controller
+                                .nodes[*tree_index];
+
+                            
+                            
                             let add_queue = data.get_queue(*value_data, TREE_CHECK_INDEX);
                             let remove_queue = data.get_queue(*value_data, TREE_BUILD_INDEX);
                             let select_queue = data.get_queue(*value_data, TREE_APPLY_INDEX);
@@ -288,20 +299,17 @@ impl GridDebugDepthVisulation {
                             div(ui, |ui| {
                                 ui.label(
                                     format!(
-                                        "{}Tree Node: {} -> {:?} ({} {} {})",
+                                        "{}Tree Node: {} -> {:?}{} ({} {} {})",
                                         if node.chosen_node_index == Some(i) {"> "} else {""},
                                         tree_index,
                                         value_data.value_type,
+                                        if tree_node.satisfied {" S"} else {""},
                                         if add_queue {"Check"} else {""},
                                         if remove_queue {"Build"} else {""},
                                         if select_queue {"Apply"} else {""},
                                         
                                     ));
                             });
-                        }
-                        
-                        if node.fixed_value.is_some() {
-                            ui.label(format!("Fixed Value: {:?}",  node.fixed_value.unwrap().value_type));
                         }
 
                         ui.label("Tree Reqs at:");
@@ -347,12 +355,11 @@ impl GridDebugDepthVisulation {
                         
                         let processed = if node.build {"D"} else {""};
                         let satisfied = if node.satisfied {"S"} else {""};
-                        let level = node.level;
                         let pos = grid.general_from_fast(node.fast_identifier);
                         if selected {
-                            ui.heading(RichText::new(format!(">>> Tree Node: {i} {level} {satisfied}{processed}")).strong());
+                            ui.heading(RichText::new(format!(">>> Tree Node: {i} {satisfied}{processed}")).strong());
                         } else {
-                            ui.heading(format!("Tree Node: {i} {level} {satisfied}{processed}"));
+                            ui.heading(format!("Tree Node: {i} {satisfied}{processed}"));
                         }
                         
                         ui.label(format!("Pos: [{:0>2},{:0>2}]", pos.0.x, pos.0.y));

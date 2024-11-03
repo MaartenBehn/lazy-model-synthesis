@@ -60,11 +60,11 @@ impl<N, TreeD, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, TreeD, GI,
     pub fn start_search(&mut self, fast_identifier: FI, value_data: VD) {
         self.depth_tree_controller.reset();
         
-        self.depth_tree_controller.nodes.push(DepthTreeNode::new(fast_identifier, value_data, 0));
+        self.depth_tree_controller.nodes.push(DepthTreeNode::new(fast_identifier, value_data));
         
         let node = self.node_storage.get_node_mut(fast_identifier);
         node.tree_nodes = vec![(value_data, 0)];
-        node.fixed_value = Some(value_data);
+        node.level = Some(0);
         node.chosen_node_index = Some(0);
         
         self.tree_dispatcher.push_tree_build_tick(0);
@@ -111,7 +111,8 @@ impl<N, TreeD, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, TreeD, GI,
         
         let mut depth_tree_node = self.depth_tree_controller.nodes[index].clone();
         depth_tree_node.build = true;
-        
+
+        let mut node = self.node_storage.get_node(depth_tree_node.fast_identifier).clone();
 
         if DEBUG {
             self.node_storage.on_pop_queue_callback(depth_tree_node.fast_identifier, depth_tree_node.value_data, TREE_BUILD_INDEX);
@@ -133,149 +134,84 @@ impl<N, TreeD, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, TreeD, GI,
 
             let req_fast_identifier = self.node_storage.fast_from_general(req_identifier);
             let mut req_node = self.node_storage.get_node(req_fast_identifier).clone();
+            let new = req_node.level.is_none();
+            
+            
+            if new {
+                req_node.level = Some(node.level.unwrap() + 1)
+            } else if req_node.level.unwrap() <= node.level.unwrap() {
+                // The node is not lower in tree -> Skip requirement
+                continue
+            }
 
             let mut req_nodes_at = ReqAtIdentifier::new(req_fast_identifier);
             let req_node_at_index = depth_tree_node.reqs.len();
+
+            let num_possible_value_data = N::get_num_possible_value_data_for_req(&req);
             
-            if req_node.fixed_value.is_some() {
-                // The node is fixed so we have to choose that one.
-                
-                if !N::value_nr_matches_req(req_node.fixed_value.unwrap(), &req) {
-                    // A Req points to a node that is fixed, but the fixed value is not possible
-                    // -> This node is not possible
-                    depth_tree_node.possible = false;
+            let mut needs_build = vec![];
+            let mut satisfied_nodes = vec![];
+            
+            for req_value_data_index in 0..num_possible_value_data {
+                let req_value_data = N::get_value_data_for_req(&req, req_value_data_index);
+
+                let res = req_node.tree_nodes
+                    .binary_search_by(|(data, _)| {data.get_value_nr().cmp(&req_value_data.get_value_nr())});
+
+                let req_tree_node_index = if res.is_err() {
+                    let req_tree_node_index = self.depth_tree_controller.nodes.len();
+                    self.depth_tree_controller.nodes.push(DepthTreeNode::new(req_fast_identifier, req_value_data));
                     
-                    // Check all incoming edges
-                    for (depth_index, _, _) in depth_tree_node.req_by.iter() {
-                        self.tree_dispatcher.push_tree_check_tick(*depth_index);
-                        
-                        if DEBUG {
-                            let tree_node = &self.depth_tree_controller.nodes[*depth_index];
-                            self.node_storage.on_push_queue_callback(tree_node.fast_identifier, tree_node.value_data, TREE_CHECK_INDEX);
-                        }
+                    if DEBUG {
+                        self.node_storage.on_add_value_callback(req_fast_identifier, req_value_data);
                     }
-                    break;
-                }
-
-                let req_value_data = req_node.fixed_value.unwrap();
-                let req_tree_node_index = self.get_req_tree_node_index(
-                    &mut req_node,
-                    req_fast_identifier,
-                    req_value_data,
-                    &depth_tree_node);
-
-                let req_tree_node = &mut self.depth_tree_controller.nodes[req_tree_node_index];
-
-                // Mark this req at as incoming edge
-                req_tree_node.req_by.push((index, req_node_at_index, 0));
-                req_nodes_at.tree_nodes.push((req_value_data, req_tree_node_index));
-                req_node.chosen_node_index = Some(req_tree_node_index);
-            } else {
-                
-                let num_possible_value_data = N::get_num_possible_value_data_for_req(&req);
-                let mut possible_nodes_to_choose = Vec::with_capacity(num_possible_value_data);
-                
-                for req_value_data_index in 0..num_possible_value_data {
-                    let req_value_data = N::get_value_data_for_req(&req, req_value_data_index);
-
-                    let req_tree_node_index = self.get_req_tree_node_index(&mut req_node, req_fast_identifier, req_value_data, &depth_tree_node);
                     
-                    let mut req_tree_node = self.depth_tree_controller.nodes[req_tree_node_index].clone();
-                    
-                    let satisfied = req_node.value == Some(DepthValue::new(req_tree_node.value_data));
-                    req_tree_node.satisfied = satisfied;
+                    // And mark it the identifier_node
+                    req_node.tree_nodes.insert(res.unwrap_err(), (req_value_data, req_tree_node_index));
 
-                    // Mark this req at as incoming edge
-                    req_tree_node.req_by.push((index, req_node_at_index, req_nodes_at.tree_nodes.len()));
-                    req_nodes_at.tree_nodes.push((req_value_data, req_tree_node_index));
+                    needs_build.push((req_tree_node_index, req_value_data));
                     
-                    // Save Tree Node of the req
-                    self.depth_tree_controller.nodes[req_tree_node_index] = req_tree_node;
-                    
-                    possible_nodes_to_choose.push((req_tree_node_index, satisfied))
-                }
-
-                for (fast, other_reqs_at_list) in req_node.reqs_at.iter() {
-                    let other_node = self.node_storage.get_node(*fast);
-                    for (tree_index, req_at_index) in other_reqs_at_list.iter() {
-                        if other_node.chosen_node_index == Some(*tree_index) {
-                            let reqs_at = &self.depth_tree_controller.nodes[*tree_index].reqs[*req_at_index];
-                            possible_nodes_to_choose = possible_nodes_to_choose
-                                .into_iter()
-                                .filter(|(tree_index, _)| {
-                                    reqs_at.tree_nodes
-                                        .iter()
-                                        .find(|(_, test_tree_index)| {
-                                            tree_index == test_tree_index
-                                        }).is_some()
-                                })
-                                .collect();
-                            break
-                        }
-                    }
-                }
-                
-                if possible_nodes_to_choose.is_empty() {
-                    error!("Failed no possible Node");
-                    break;
-                }
-                
-                let satisfied_index = possible_nodes_to_choose.iter().find_map(|(i, s)| {
-                    if *s { Some(*i) } else { None } 
-                });
-                
-                let chosen_index = if satisfied_index.is_some() {
-                    satisfied_index.unwrap()
+                    req_tree_node_index
                 } else {
-                    possible_nodes_to_choose[0].0
+                    req_node.tree_nodes[res.unwrap()].1
                 };
 
-                req_node.chosen_node_index = Some(chosen_index);
+                let mut req_tree_node = self.depth_tree_controller.nodes[req_tree_node_index].clone();
 
-
-                let tree_node = &self.depth_tree_controller.nodes[chosen_index];
-                if !tree_node.build && !tree_node.satisfied {
-                    self.tree_dispatcher.push_tree_build_tick(chosen_index);
-
-                    if DEBUG {
-                        self.node_storage.on_push_queue_callback(tree_node.fast_identifier, tree_node.value_data, TREE_BUILD_INDEX)
-                    }
+                let satisfied = req_node.value == Some(DepthValue::new(req_tree_node.value_data));
+                req_tree_node.satisfied = satisfied;
+                
+                if satisfied {
+                    satisfied_nodes.push(req_tree_node_index);
                 }
+
+                // Mark this req at as incoming edge
+                req_tree_node.req_by.push((index, req_node_at_index, req_nodes_at.tree_nodes.len()));
+                req_nodes_at.tree_nodes.push((req_value_data, req_tree_node_index));
+
+                // Save Tree Node of the req
+                self.depth_tree_controller.nodes[req_tree_node_index] = req_tree_node;
             }
             
             depth_tree_node.reqs.push(req_nodes_at);
             Self::add_req_at_to_depth_node(&mut req_node, depth_tree_node.fast_identifier, index, req_node_at_index);
             
             self.node_storage.set_node(req_fast_identifier, req_node);
+
+            if new && !satisfied_nodes.is_empty() {
+                // Select node
+                continue
+            }
+            
+            for (req_tree_node_index, req_value_data) in needs_build {
+                self.tree_dispatcher.push_tree_build_tick(req_tree_node_index);
+
+                if DEBUG {
+                    self.node_storage.on_push_queue_callback(req_fast_identifier, req_value_data, TREE_BUILD_INDEX)
+                }
+            }
         }
         self.depth_tree_controller.nodes[index] = depth_tree_node;
-    }
-    
-    fn get_req_tree_node_index(
-        &mut self, 
-        req_node: &mut DepthNode<VD, FI>,
-        req_fast_identifier: FI,
-        req_value_data: VD,  
-        depth_tree_node: &DepthTreeNode<FI, VD>) -> usize {
-        
-        let res = req_node.tree_nodes
-            .binary_search_by(|(data, _)| {data.get_value_nr().cmp(&req_value_data.get_value_nr())});
-
-        if res.is_err() {
-            let req_tree_node_index = self.depth_tree_controller.nodes.len();
-            self.depth_tree_controller.nodes.push(DepthTreeNode::new(req_fast_identifier, req_value_data, depth_tree_node.level + 1));
-
-            if DEBUG {
-                self.node_storage.on_add_value_callback(req_fast_identifier, req_value_data);
-            }
-
-            // And mark it the identifier_node
-            req_node.tree_nodes.insert(res.unwrap_err(), (req_value_data, req_tree_node_index));
-
-            req_tree_node_index
-        } else {
-            req_node.tree_nodes[res.unwrap()].1
-        }
     }
     
     fn add_req_at_to_depth_node(req_node: &mut DepthNode<VD, FI>, req_fast_identifier: FI, tree_index: DepthTreeIndex, req_req_at_index: ReqAtIndex) {
@@ -336,7 +272,7 @@ impl<N, TreeD, GI, FI, PI, VD, const DEBUG: bool> DepthNodeManager<N, TreeD, GI,
 
         for req_at in depth_tree_node.reqs.iter() {
             let req_node = self.node_storage.get_node(req_at.fast_identifier);
-            
+
             let chosen_node_index = req_node.chosen_node_index.unwrap();
             let tree_node = &self.depth_tree_controller.nodes[chosen_node_index];
             if !tree_node.applied && !self.tree_dispatcher.apply_contains_node(chosen_node_index) {
