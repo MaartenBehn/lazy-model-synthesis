@@ -73,7 +73,7 @@ impl GridProfileGoBackVisulation {
         ValueData,
         false,
     > {
-        let mut grid = Grid::new(CHUNK_SIZE);
+        let mut grid = Grid::new(CHUNK_SIZE, Some(ValueData::new(ValueType::Stone)));
         grid.add_chunk(IVec2::ZERO);
         grid.rules = get_example_rules();
 

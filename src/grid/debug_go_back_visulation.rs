@@ -56,7 +56,7 @@ pub struct GridDebugGoBackVisulation {
 impl GridDebugGoBackVisulation {
     pub fn new(base: &mut BaseApp<LazyModelSynthesis>) -> Result<Self> {
 
-        let mut grid = Grid::new(CHUNK_SIZE);
+        let mut grid = Grid::new(CHUNK_SIZE, None);
         grid.add_chunk(IVec2::ZERO);
         grid.rules = get_example_rules();
 

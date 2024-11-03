@@ -7,7 +7,7 @@ const VALUE_INDEX_MAX: ValueIndex = ValueIndex::MAX - 1;
 
 pub trait NodeT<V: ValueT<VD>, VD: ValueDataT>: Clone + Default {
     
-    fn new(num_values: usize) -> Self;
+    fn new(num_values: usize, base_value: Option<VD>) -> Self;
     fn get_values(&self) -> &[V];
     fn get_values_mut(&mut self) -> &mut [V];
 }

@@ -17,7 +17,7 @@ use octa_force::vulkan::ash::vk::AttachmentLoadOp;
 use crate::depth_search::node::DepthNode;
 use crate::depth_search::node_manager::DepthNodeManager;
 use crate::depth_search::value::DepthValue;
-use crate::dispatcher::{DepthTreeDispatcherT};
+use crate::dispatcher::{DepthTreeDispatcherT, TREE_APPLY_INDEX, TREE_BUILD_INDEX, TREE_CHECK_INDEX};
 use crate::grid::grid::{Grid, ValueData};
 use crate::grid::identifier::{ChunkNodeIndex, GlobalPos, PackedChunkNodeIndex};
 use crate::dispatcher::vec_dispatcher::VecTreeDispatcher;
@@ -60,12 +60,11 @@ pub struct GridDebugDepthVisulation {
 impl GridDebugDepthVisulation {
     pub fn new(base: &mut BaseApp<LazyModelSynthesis>) -> Result<Self> {
 
-        let mut grid = Grid::new(CHUNK_SIZE);
+        let mut grid = Grid::new(CHUNK_SIZE, Some(ValueData::new(ValueType::Stone)));
         grid.add_chunk(IVec2::ZERO);
         grid.rules = get_example_rules();
 
-        let mut node_manager = DepthNodeManager::new(grid, NUM_VALUES, NUM_REQS);
-        node_manager.select_value(GlobalPos(IVec2::new(0, 0)), ValueData::new(ValueType::Stone));
+        let node_manager = DepthNodeManager::new(grid, NUM_VALUES, NUM_REQS);
         
         let state_saver = StateSaver::from_state(node_manager, 100);
 
@@ -275,40 +274,34 @@ impl GridDebugDepthVisulation {
                         let data = self.state_saver.get_state().node_storage
                             .chunks[chunk_node_index.chunk_index]
                             .render_data[chunk_node_index.node_index];
-                        
-                        for i in 0..NUM_VALUE_TYPES {
-                            let value_data = ValueData::from_value_nr(i);
-                            let added = data.get_value_type(value_data);
-                            let add_queue = data.get_queue(value_data, 1);
-                            let remove_queue = data.get_queue(value_data, 2);
-                            let select_queue = data.get_queue(value_data, 3);
-                            
-                            div(ui, |ui| {
-                                ui.label(
-                                    format!(
-                                        "{} {:?} {} {} {}",
-                                        if added {"x"} else {"   "},
-                                        ValueType::try_from_primitive(i).unwrap(),
-                                        if add_queue {"A"} else {"   "},
-                                        if remove_queue {"R"} else {"   "},
-                                        if select_queue {"S"} else {"   "},
-                                    ));
-                            });
-                        }
 
                         let node = self.state_saver
                             .get_state()
                             .node_storage
                             .get_node(chunk_node_index);
 
+                        for (i, (value_data, tree_index)) in node.tree_nodes.iter().enumerate() {
+                            let add_queue = data.get_queue(*value_data, TREE_CHECK_INDEX);
+                            let remove_queue = data.get_queue(*value_data, TREE_BUILD_INDEX);
+                            let select_queue = data.get_queue(*value_data, TREE_APPLY_INDEX);
+                            
+                            div(ui, |ui| {
+                                ui.label(
+                                    format!(
+                                        "{}Tree Node: {} -> {:?} ({} {} {})",
+                                        if node.chosen_node_index == Some(i) {"> "} else {""},
+                                        tree_index,
+                                        value_data.value_type,
+                                        if add_queue {"Check"} else {""},
+                                        if remove_queue {"Build"} else {""},
+                                        if select_queue {"Apply"} else {""},
+                                        
+                                    ));
+                            });
+                        }
+                        
                         if node.fixed_value.is_some() {
                             ui.label(format!("Fixed Value: {:?}",  node.fixed_value.unwrap().value_type));
-                        }
-
-                        ui.label("Tree Identifier:");
-                        for (value_nr, tree_index) in node.tree_nodes.iter() {
-                            let value_type = value_nr.value_type;
-                            ui.label(format!("{value_type:?} at Tree Index {tree_index}"));
                         }
 
                         ui.label("Tree Reqs at:");
@@ -316,8 +309,8 @@ impl GridDebugDepthVisulation {
                             let identifier = self.state_saver.get_state().node_storage.general_from_fast(*fast);
                             ui.label(format!("[{:0>2} {:0>2}]", identifier.0.x, identifier.0.y));
 
-                            for (tree_index, req_at_index) in reqs_at.iter() {
-                                ui.label(format!("Tree Node {tree_index} Req_at {req_at_index}"));
+                            for (in_node_tree_node_index, req_at_index) in reqs_at.iter() {
+                                ui.label(format!("In Node Index {in_node_tree_node_index} Req_at {req_at_index}"));
                             }
                         }
                         
@@ -373,13 +366,8 @@ impl GridDebugDepthVisulation {
                             ui.label(format!("ReqPos: [{},{}]", req_pos.0.x, req_pos.0.y));
                             for (i, (req_value_nr, tree_index)) in req_at.tree_nodes.iter().enumerate() {
                                 let value_type = req_value_nr.value_type;
-                                
-                                if req_at.chosen_index == Some(i) {
-                                    ui.label(format!("> {value_type:?} at Tree Index {tree_index}"));
-                                } else {
-                                    ui.label(format!("{value_type:?} at Tree Index {tree_index}"));
-                                }
-                                
+
+                                ui.label(format!("{value_type:?} at Tree Index {tree_index}"));
                             }
                         }
 

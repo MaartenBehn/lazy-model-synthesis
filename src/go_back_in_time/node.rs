@@ -13,10 +13,16 @@ pub struct GoBackNode<VD: ValueDataT> {
 }
 
 impl<VD: ValueDataT> NodeT<GoBackValue<VD>, VD> for GoBackNode<VD> {
-    fn new(num_values: usize) -> Self {
+    fn new(num_values: usize, base_value: Option<VD>) -> Self {
+        let values = if base_value.is_some() {
+            vec![GoBackValue::<VD>::new(base_value.unwrap())]
+        } else {
+            vec![]
+        };
+        
         GoBackNode {
             last_removed: iter::repeat(0).take(num_values).collect(),
-            values: vec![],
+            values,
             selected: false,
         }
     }

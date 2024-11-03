@@ -1,7 +1,7 @@
 pub mod vec_dispatcher;
 pub mod random_dispatcher;
 
-use crate::depth_search::depth_tree::DepthIndex;
+use crate::depth_search::depth_tree::DepthTreeIndex;
 
 pub const ADD_INDEX: usize = 1;
 pub const REMOVE_INDEX: usize = 2;
@@ -28,13 +28,13 @@ pub trait WFCDispatcherT<FI, VD>: Default + Clone {
 }
 
 pub trait DepthTreeDispatcherT: Default + Clone {
-    fn push_tree_check_tick(&mut self, tree_index: DepthIndex);
-    fn pop_tree_check_tick(&mut self) -> Option<DepthIndex>;
-    fn push_tree_build_tick(&mut self, tree_index: DepthIndex);
-    fn pop_tree_build_tick(&mut self) -> Option<DepthIndex>;
-    fn push_tree_apply_tick(&mut self, tree_index: DepthIndex);
-    fn pop_tree_apply_tick(&mut self) -> Option<DepthIndex>;
-    fn apply_contains_node(&mut self, tree_index: DepthIndex) -> bool;
+    fn push_tree_check_tick(&mut self, tree_index: DepthTreeIndex);
+    fn pop_tree_check_tick(&mut self) -> Option<DepthTreeIndex>;
+    fn push_tree_build_tick(&mut self, tree_index: DepthTreeIndex);
+    fn pop_tree_build_tick(&mut self) -> Option<DepthTreeIndex>;
+    fn push_tree_apply_tick(&mut self, tree_index: DepthTreeIndex);
+    fn pop_tree_apply_tick(&mut self) -> Option<DepthTreeIndex>;
+    fn apply_contains_node(&mut self, tree_index: DepthTreeIndex) -> bool;
 }
 
 

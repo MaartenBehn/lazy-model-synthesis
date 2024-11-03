@@ -13,12 +13,24 @@ const MAX_VALUE_TYPE_INDEX: usize = 2_usize.pow(MAX_SELECTED_BITS as u32);
 
 pub const NUM_VALUE_TYPES: u32 = 3;
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone)]
 pub struct NodeRenderData {
     data: u32,
 }
 
 impl NodeRenderData {
+    
+    pub fn new(base_value: Option<ValueData>) -> NodeRenderData {
+        let mut data = NodeRenderData {
+            data: 0,
+        };
+        
+        if base_value.is_some() {
+            data.set_selected_value_data(base_value.unwrap());
+        }
+        
+        data
+    }
 
     fn get_bit(&self, idx: usize) -> bool {
         (self.data >> idx & 1) == 1
@@ -58,7 +70,7 @@ impl NodeRenderData {
         ValueData::from_value_nr(self.data & (MAX_VALUE_TYPE_INDEX - 1) as u32 - 1)
     }
 
-    pub fn set_selected_value_type(&mut self, value_data: ValueData)  {
+    pub fn set_selected_value_data(&mut self, value_data: ValueData)  {
         self.data = value_data.get_value_nr() + 1 + (self.data & !(MAX_VALUE_TYPE_INDEX - 1) as u32);
     }
 

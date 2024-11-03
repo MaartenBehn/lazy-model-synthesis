@@ -1,4 +1,4 @@
-use crate::depth_search::depth_tree::DepthIndex;
+use crate::depth_search::depth_tree::DepthTreeIndex;
 use crate::general_data_structure::identifier::{FastIdentifierT, GeneralIdentifierT, IdentifierConverterT, PackedIdentifierT};
 use crate::general_data_structure::node::{NodeT, ValueIndex};
 use crate::general_data_structure::value::{ValueDataT, ValueT};

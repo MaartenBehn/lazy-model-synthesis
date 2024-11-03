@@ -31,6 +31,7 @@ pub struct Grid<NO: NodeT<V, ValueData>, V: ValueT<ValueData>> {
     pub rules: Vec<Rule>,
 
     pub rng: Rng,
+    pub base_value: Option<ValueData>
 }
 
 #[derive(Clone)]
@@ -39,7 +40,8 @@ pub struct Chunk<NO: NodeT<V, ValueData>, V: ValueT<ValueData>> {
 
     pub pos: IVec2,
     pub nodes: Vec<NO>,
-    pub render_data: Vec<NodeRenderData>
+    pub render_data: Vec<NodeRenderData>,
+   
 }
 
 #[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
@@ -48,7 +50,7 @@ pub struct ValueData {
 }
 
 impl<NO: NodeT<V, ValueData>, V: ValueT<ValueData>> Grid<NO, V> {
-    pub fn new(chunk_size: usize) -> Self {
+    pub fn new(chunk_size: usize, base_value: Option<ValueData>) -> Self {
         let nodes_per_chunk = chunk_size * chunk_size;
         let bits_for_nodes_per_chunk = get_num_bits_for_number(nodes_per_chunk -1);
         let mask_for_node_per_chunk = (nodes_per_chunk -1) as u32;
@@ -62,6 +64,7 @@ impl<NO: NodeT<V, ValueData>, V: ValueT<ValueData>> Grid<NO, V> {
             chunks: vec![],
             rules: vec![],
             rng: Default::default(),
+            base_value,
 
             ..Default::default()
         }
@@ -71,8 +74,8 @@ impl<NO: NodeT<V, ValueData>, V: ValueT<ValueData>> Grid<NO, V> {
         self.chunks.push(Chunk {
             phantom_data: Default::default(),
             pos,
-            nodes: repeat_with(|| NO::new(NUM_VALUES)).take(self.nodes_per_chunk).collect::<Vec<_>>(),
-            render_data: vec![NodeRenderData::default(); self.nodes_per_chunk]
+            nodes: repeat_with(|| NO::new(NUM_VALUES, self.base_value)).take(self.nodes_per_chunk).collect::<Vec<_>>(),
+            render_data: vec![NodeRenderData::new(self.base_value); self.nodes_per_chunk],
         })
     }
 }
@@ -139,7 +142,7 @@ impl<NO: NodeT<V, ValueData>, V: ValueT<ValueData>> NodeStorageT<GlobalPos, Chun
     }
 
     fn on_select_value_callback(&mut self, fast: ChunkNodeIndex, value_data: ValueData) {
-        self.chunks[fast.chunk_index].render_data[fast.node_index].set_selected_value_type(value_data);
+        self.chunks[fast.chunk_index].render_data[fast.node_index].set_selected_value_data(value_data);
     }
 
     fn on_push_queue_callback(&mut self, fast: ChunkNodeIndex, value_data: ValueData, i: usize) {

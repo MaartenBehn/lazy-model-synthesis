@@ -1,5 +1,5 @@
 use std::collections::VecDeque;
-use crate::depth_search::depth_tree::DepthIndex;
+use crate::depth_search::depth_tree::DepthTreeIndex;
 use crate::dispatcher::{DepthTreeDispatcherT, WFCDispatcherT};
 use crate::general_data_structure::identifier::FastIdentifierT;
 use crate::general_data_structure::value::ValueDataT;
@@ -13,9 +13,9 @@ pub struct VecWFCDispatcher<FI: FastIdentifierT, VD: ValueDataT> {
 
 #[derive(Default, Clone)]
 pub struct VecTreeDispatcher {
-    tree_check: VecDeque<DepthIndex>,
-    tree_build: VecDeque<DepthIndex>,
-    tree_apply: VecDeque<DepthIndex>,
+    tree_check: VecDeque<DepthTreeIndex>,
+    tree_build: VecDeque<DepthTreeIndex>,
+    tree_apply: VecDeque<DepthTreeIndex>,
 }
 
 impl<FI: FastIdentifierT, VD: ValueDataT> WFCDispatcherT<FI, VD> for VecWFCDispatcher<FI, VD> {
@@ -52,30 +52,30 @@ impl<FI: FastIdentifierT, VD: ValueDataT> WFCDispatcherT<FI, VD> for VecWFCDispa
 
 impl DepthTreeDispatcherT for VecTreeDispatcher {
 
-    fn push_tree_check_tick(&mut self, tree_index: DepthIndex) {
+    fn push_tree_check_tick(&mut self, tree_index: DepthTreeIndex) {
         self.tree_check.push_back(tree_index)
     }
 
-    fn pop_tree_check_tick(&mut self) -> Option<DepthIndex> {
+    fn pop_tree_check_tick(&mut self) -> Option<DepthTreeIndex> {
         self.tree_check.pop_back()
     }
-    fn push_tree_build_tick(&mut self, tree_index: DepthIndex) {
+    fn push_tree_build_tick(&mut self, tree_index: DepthTreeIndex) {
         self.tree_build.push_back(tree_index)
     }
 
-    fn pop_tree_build_tick(&mut self) -> Option<DepthIndex> {
+    fn pop_tree_build_tick(&mut self) -> Option<DepthTreeIndex> {
         self.tree_build.pop_back()
     }
 
-    fn push_tree_apply_tick(&mut self, tree_index: DepthIndex) {
+    fn push_tree_apply_tick(&mut self, tree_index: DepthTreeIndex) {
         self.tree_apply.push_back(tree_index)
     }
 
-    fn pop_tree_apply_tick(&mut self) -> Option<DepthIndex> {
+    fn pop_tree_apply_tick(&mut self) -> Option<DepthTreeIndex> {
         self.tree_apply.pop_back()
     }
 
-    fn apply_contains_node(&mut self, tree_index: DepthIndex) -> bool {
+    fn apply_contains_node(&mut self, tree_index: DepthTreeIndex) -> bool {
         self.tree_apply.iter().find(|i| {
             **i == tree_index
         }).is_some()

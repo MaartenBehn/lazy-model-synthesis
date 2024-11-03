@@ -1,10 +1,16 @@
-use std::collections::HashMap;
 use crate::general_data_structure::identifier::FastIdentifierT;
 use crate::general_data_structure::value::{ValueDataT};
 
-pub type DepthIndex = usize;
-pub type DepthReqATIndex = usize;
-pub type DepthReqIndex = usize;
+/// The Index of a node in the DepthTreeController.nodes
+pub type DepthTreeIndex = usize;
+
+/// The Index of ReqAtIdentifier in a DepthTreeNode
+pub type ReqAtIndex = usize;
+
+/// The Index of ReqAtIdentifier.tree_nodes entry in a DepthTreeNode
+pub type InReqAtIndex = usize;
+
+/// The Level of a DepthTreeNode in the DepthTree
 pub type DepthLevel = usize;
 
 #[derive(Default, Clone)]
@@ -18,7 +24,7 @@ pub struct DepthTreeNode<FI: FastIdentifierT, VD: ValueDataT> {
     pub value_data: VD,
     pub level: DepthLevel,
     pub reqs: Vec<ReqAtIdentifier<FI, VD>>,
-    pub req_by: Vec<(DepthIndex, DepthReqATIndex, DepthReqIndex)>,
+    pub req_by: Vec<(DepthTreeIndex, ReqAtIndex, InReqAtIndex)>,
     pub satisfied: bool,
     pub possible: bool,
     pub build: bool,
@@ -28,8 +34,7 @@ pub struct DepthTreeNode<FI: FastIdentifierT, VD: ValueDataT> {
 #[derive(Clone)]
 pub struct ReqAtIdentifier<FI: FastIdentifierT, VD> {
     pub fast_identifier: FI,
-    pub tree_nodes: Vec<(VD, DepthIndex)>,
-    pub chosen_index: Option<usize>, 
+    pub tree_nodes: Vec<(VD, DepthTreeIndex)>,
 }
 
 impl<FI: FastIdentifierT, VD: ValueDataT> DepthTreeController<FI, VD> {
@@ -45,7 +50,6 @@ impl<FI: FastIdentifierT, VD> ReqAtIdentifier<FI, VD> {
         ReqAtIdentifier {
             fast_identifier: fast,
             tree_nodes: vec![],
-            chosen_index: None,
         }
     }
 }
