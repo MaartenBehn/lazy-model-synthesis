@@ -4,6 +4,8 @@ use octa_force::glam::IVec2;
 pub const NUM_VALUES: usize = 3;
 pub const NUM_REQS: usize = 8;
 
+pub type ValueNr = u32;
+
 #[derive(Default, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, IntoPrimitive, TryFromPrimitive, Debug)]
 #[repr(u32)]
 pub enum ValueType {
@@ -93,3 +95,12 @@ pub fn get_example_rules() -> Vec<Rule> {
     ]
 }
 
+impl ValueType {
+    pub fn get_value_nr(&self) -> ValueNr {
+        (*self).into()
+    }
+    
+    pub fn from_value_nr(value_nr: ValueNr) -> ValueType {
+        ValueType::try_from_primitive(value_nr as u32).unwrap()
+    }
+}

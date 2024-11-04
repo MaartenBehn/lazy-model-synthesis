@@ -1,7 +1,6 @@
-use std::ffi::c_float;
+use crate::grid::{get_node_index_from_pos, Grid};
 use crate::util::state_saver::TickType;
 use std::time::Duration;
-use num_enum::TryFromPrimitive;
 use octa_force::gui::Gui;
 use octa_force::anyhow::*;
 use octa_force::{BaseApp, egui, glam};
@@ -10,60 +9,41 @@ use octa_force::egui::FontFamily::Proportional;
 use octa_force::egui::panel::Side;
 use octa_force::egui::TextStyle::{Body, Button, Heading, Monospace, Small};
 use octa_force::egui_winit::winit::event::WindowEvent;
-use octa_force::glam::{IVec2, vec2, Vec2};
+use octa_force::glam::{ivec2, vec2, Vec2};
 use octa_force::puffin_egui::puffin;
 use octa_force::vulkan::ash::vk::AttachmentLoadOp;
-use crate::grid::grid::{Grid, ValueData};
-use crate::grid::identifier::{ChunkNodeIndex, GlobalPos, PackedChunkNodeIndex};
-use crate::dispatcher::random_dispatcher::RandomDispatcher;
-use crate::go_back_in_time::node_manager::GoBackNodeManager;
-use crate::grid::render::node_render_data::NUM_VALUE_TYPES;
-use crate::grid::render::renderer::GridRenderer;
-use crate::grid::render::selector::Selector;
-use crate::grid::rules::{get_example_rules, NUM_REQS, NUM_VALUES, ValueType};
+use crate::grid_manager::GridManager;
+use crate::render::node_render_data::NUM_VALUE_TYPES;
+use crate::render::renderer::GridRenderer;
+use crate::render::selector::Selector;
 use crate::LazyModelSynthesis;
-use crate::general_data_structure::identifier::IdentifierConverterT;
-use crate::general_data_structure::value::ValueDataT;
+use crate::rules::ValueType;
 use crate::util::state_saver::StateSaver;
-use crate::go_back_in_time::node::GoBackNode;
-use crate::go_back_in_time::value::GoBackValue;
 
-const CHUNK_SIZE: usize = 32;
+pub const GRID_SIZE: usize = 32;
+const DEBUG_MODE: bool = true;
 
-pub struct GridDebugGoBackVisulation {
+pub struct Visualization {
     pub gui: Gui,
     
-    pub state_saver: StateSaver<
-        GoBackNodeManager<
-            Grid<GoBackNode<ValueData>, GoBackValue<ValueData>>, 
-            RandomDispatcher<ChunkNodeIndex, ValueData>,
-            GlobalPos, 
-            ChunkNodeIndex, 
-            PackedChunkNodeIndex,
-            ValueData,
-            true,
-        >
-    >,
+    pub state_saver: StateSaver<GridManager>,
 
     pub grid_renderer: GridRenderer,
     pub selector: Selector,
 
     run: bool,
     run_ticks_per_frame: usize,
-    pointer_pos_in_grid: Option<Vec2>
+    pointer_pos_in_grid: Option<Vec2>,
 }
 
-impl GridDebugGoBackVisulation {
+impl Visualization {
     pub fn new(base: &mut BaseApp<LazyModelSynthesis>) -> Result<Self> {
 
-        let mut grid = Grid::new(CHUNK_SIZE, None);
-        grid.add_chunk(IVec2::ZERO);
-        grid.rules = get_example_rules();
-
-        let mut node_manager = GoBackNodeManager::new(grid.clone(), NUM_VALUES, NUM_REQS);
-        node_manager.select_value(GlobalPos(IVec2::new(0, 0)), ValueData::new(ValueType::Stone));
+        let grid = Grid::new(Some(ValueType::Stone));
         
-        let state_saver = StateSaver::from_state(node_manager, 100);
+        let grid_manager = GridManager::new(grid);
+        
+        let state_saver = StateSaver::from_state(grid_manager, 100);
 
         let mut gui = Gui::new(
             &base.context,
@@ -73,10 +53,10 @@ impl GridDebugGoBackVisulation {
             base.num_frames
         )?;
 
-        let grid_renderer = GridRenderer::new(&mut base.context, &mut gui.renderer, base.num_frames, CHUNK_SIZE, 1)?;
+        let grid_renderer = GridRenderer::new(&mut base.context, &mut gui.renderer, base.num_frames, GRID_SIZE, 1)?;
         let selector = Selector::new();
-
-        Ok(GridDebugGoBackVisulation {
+        
+        let mut v = Visualization {
             state_saver,
             gui,
             grid_renderer,
@@ -84,7 +64,10 @@ impl GridDebugGoBackVisulation {
             run: false,
             run_ticks_per_frame: 10,
             pointer_pos_in_grid: None,
-        })
+        };
+        v.place_random_value();
+
+        Ok(v)
     }
 
     pub fn update(
@@ -96,12 +79,12 @@ impl GridDebugGoBackVisulation {
         
         if base.controls.mouse_left && self.selector.last_selected.is_some() && self.selector.value_type_to_place.is_some() {
             self.state_saver.get_state_mut().select_value(
-                GlobalPos(self.selector.last_selected.unwrap()), 
-                ValueData::new(self.selector.value_type_to_place.unwrap())
+                self.selector.last_selected.unwrap(), 
+                self.selector.value_type_to_place.unwrap()
             );
         }
         
-        if self.run {
+        if self.run  {
             self.state_saver.set_next_tick(TickType::ForwardSave);
             for _ in 0..self.run_ticks_per_frame {
                 self.state_saver.tick();
@@ -111,15 +94,44 @@ impl GridDebugGoBackVisulation {
         }
         self.state_saver.set_next_tick(TickType::None);
         
-        
-        self.selector.add_to_render_data(self.pointer_pos_in_grid, self.state_saver.get_state_mut().get_current_mut());
+        self.selector.add_to_render_data(self.pointer_pos_in_grid, &mut self.state_saver.get_state_mut().grid);
 
-        self.grid_renderer.set_chunk_data(0, CHUNK_SIZE, &self.state_saver.get_state().get_current().chunks[0].render_data);
+        
+        let working_grids = &self.state_saver.get_state().working_grids;
+        if !working_grids.is_empty() {
+            self.grid_renderer.set_chunk_data(0, GRID_SIZE, &working_grids[0].full_grid.render_data);
+        } else {
+            self.grid_renderer.set_chunk_data(0, GRID_SIZE, &self.state_saver.get_state().grid.render_data);
+        }
+        
         self.grid_renderer.update(&mut base.context, base.swapchain.format, frame_index);
 
-        self.selector.clear_from_render_data(self.state_saver.get_state_mut().get_current_mut());
+        self.selector.clear_from_render_data(&mut self.state_saver.get_state_mut().grid);
         
         Ok(())
+    }
+    
+    fn place_random_value(&mut self) {
+        let pos = ivec2(fastrand::i32(0..32), fastrand::i32(0..32));
+        let node_index = get_node_index_from_pos(pos);
+        let node = self.state_saver.get_state().grid.nodes[node_index];
+        let v = &node.value;
+        let next_vt = if v.is_some() {
+            let vt = v.unwrap();
+            if vt == ValueType::Stone {
+                ValueType::Sand
+            } else if vt == ValueType::Grass {
+                ValueType::Stone
+            } else {
+                ValueType::Stone
+            }
+        } else {
+            ValueType::Grass
+        };
+
+        self.state_saver.get_state_mut().select_value(pos, next_vt);
+
+        self.run = false;
     }
 
     pub fn record_render_commands(
@@ -161,7 +173,7 @@ impl GridDebugGoBackVisulation {
 
                 ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
                     div(ui, |ui| {
-                        ui.heading("Grid (Debug Mode)");
+                        ui.heading("Depth Tree Grid (Debug Mode)");
                     });
 
 
@@ -216,7 +228,7 @@ impl GridDebugGoBackVisulation {
                         ui.label("Place: ");
 
                         for i in 0..NUM_VALUE_TYPES {
-                            let value_type = ValueType::try_from_primitive(i).unwrap();
+                            let value_type = ValueType::from_value_nr(i);
                             
                             let mut checked = self.selector.value_type_to_place == Some(value_type); 
                             ui.checkbox(&mut checked, format!("{:?}", value_type));
@@ -237,35 +249,6 @@ impl GridDebugGoBackVisulation {
                         div(ui, |ui| {
                             ui.label(format!("Pos: [{:0>2} {:0>2}]", pos.x, pos.y));
                         });
-
-                        let chunk_node_index = self.state_saver.get_state_mut().get_current_mut()
-                            .get_chunk_and_node_index_from_global_pos(GlobalPos(pos));
-                        
-                        let data = self.state_saver.get_state().get_current()
-                            .chunks[chunk_node_index.chunk_index]
-                            .render_data[chunk_node_index.node_index];
-                        
-                        for i in 0..NUM_VALUE_TYPES {
-                            let value_data = ValueData::from_value_nr(i);
-                            let added = data.get_value_type(value_data);
-                            let add_queue = data.get_queue(value_data, 1);
-                            let remove_queue = data.get_queue(value_data, 2);
-                            let select_queue = data.get_queue(value_data, 3);
-                            
-                            div(ui, |ui| {
-                                ui.label(
-                                    format!(
-                                        "{} {:?} {} {} {}",
-                                        if added {"x"} else {"   "},
-                                        ValueType::try_from_primitive(i).unwrap(),
-                                        if add_queue {"A"} else {"   "},
-                                        if remove_queue {"R"} else {"   "},
-                                        if select_queue {"S"} else {"   "},
-                                    ));
-                            });
-
-
-                        }
                         
                     } else {
                         div(ui, |ui| {
@@ -274,74 +257,7 @@ impl GridDebugGoBackVisulation {
                     }
                 });
             });
-
-            egui::SidePanel::new(Side::Right, Id::new("Side Panel 2")).show(ctx, |ui| {
-                puffin::profile_scope!("History Panel");
-
-
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    ui.set_min_width(200.0);
-
-                    let grid = self.state_saver.get_state().get_current();
-                    let history = self.state_saver.get_state().get_history();
-                    
-                    let reset_history_indices = if self.selector.last_selected.is_some() {
-                        let fast_index = grid.fast_from_general(GlobalPos(self.selector.last_selected.unwrap()));
-                        let node = &grid.chunks[fast_index.chunk_index].nodes[fast_index.node_index];
-                        node.last_removed.to_owned()
-                    } else {
-                        vec![]
-                    };
-                    
-                    for (i, history_node) in history.nodes.iter().enumerate() {
-                        if history_node.is_change() {
-                            let (packed_identifier, value_data) = history.packer.unpack_change::<PackedChunkNodeIndex, ValueData>(*history_node);
-
-                            let pos = grid.general_from_packed(packed_identifier);
-
-                            let mut added = false;
-                            if self.selector.last_selected.is_some() {
-                                if self.selector.last_selected == Some(pos.0) {
-                                    ui.scroll_to_cursor(Some(Align::Center));
-                                    ui.label(RichText::new(format!("-> {}: [{} {}] - {:?}", i, pos.0.x, pos.0.y, value_data)).heading().strong());
-
-                                    added = true;
-                                }
-
-                                for index in reset_history_indices.iter() {
-                                    if (*index as usize) == i {
-                                        ui.label(RichText::new(format!(">> {}: [{} {}] - {:?}", i, pos.0.x, pos.0.y, value_data)).heading().strong());
-                                        added = true;
-                                        break;
-                                    }
-                                }
-                            } 
-                            
-                            if !added {
-                                ui.label(format!("-- {}: [{} {}] - {:?}", i, pos.0.x, pos.0.y, value_data));
-                            }
-                        } else {
-                            let mut added = false;
-                            for index in reset_history_indices.iter() {
-                                if (*index as usize) == i {
-                                    ui.label(RichText::new(format!(">> Summray")).heading().strong());
-                                    added = true;
-                                    break;
-                                }
-                            }
-
-                            if !added {
-                                ui.heading(format!("- Summray"));
-                            }
-                        }
-                    }
-
-
-                });
-
-
-            });
-
+            
             egui::CentralPanel::default().show(ctx, |ui| {
                 puffin::profile_scope!("Center Panel");
 
@@ -386,5 +302,11 @@ fn egui_vec2_to_glam_vec2(v: egui::Vec2) -> glam::Vec2 {
 fn div(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui)) {
     Frame::none().show(ui, |ui| {
         ui.with_layout(Layout::left_to_right(Align::TOP), add_contents);
+    });
+}
+
+fn div_vert(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui)) {
+    Frame::none().show(ui, |ui| {
+        ui.with_layout(Layout::top_down(Align::LEFT), add_contents);
     });
 }

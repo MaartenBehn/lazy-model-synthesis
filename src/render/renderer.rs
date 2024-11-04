@@ -12,7 +12,7 @@ use octa_force::vulkan::ash::vk::{BufferUsageFlags, Format, ImageUsageFlags};
 use octa_force::anyhow::Result;
 use octa_force::egui::load::SizedTexture;
 use octa_force::vulkan::gpu_allocator::MemoryLocation;
-use crate::grid::render::node_render_data::NodeRenderData;
+use crate::render::node_render_data::NodeRenderData;
 
 const DISPATCH_GROUP_SIZE_X: u32 = 32;
 const DISPATCH_GROUP_SIZE_Y: u32 = 32;
@@ -136,7 +136,7 @@ impl GridRenderer {
         let render_pipeline = context.create_compute_pipeline(
             &render_pipeline_layout,
             ComputePipelineCreateInfo {
-                shader_source: &include_bytes!("../../../shaders/grid_render.comp.spv")[..],
+                shader_source: &include_bytes!("../../shaders/grid_render.comp.spv")[..],
             },
         )?;
 
