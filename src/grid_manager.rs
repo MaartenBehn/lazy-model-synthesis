@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::iter::repeat;
 use octa_force::glam::IVec2;
 use crate::grid::{get_node_index_from_pos, is_pos_in_grid, Grid, NodeIndex};
 use crate::rules::{get_example_rules, NeighborReq, Rule, ValueType};
@@ -19,7 +20,7 @@ pub struct GridManager {
 pub struct WorkingGrid {
     pub full_grid: Grid,
     pub empty_grid: Grid,
-    orders: VecDeque<IVec2>
+    pub orders: VecDeque<IVec2>
 }
 
 impl GridManager {
@@ -57,22 +58,24 @@ impl GridManager {
             return true
         }
         
-        let done_working_grid = self.tick_order_on_working_grid(working_grid, order.unwrap());
+        let done_working_grids = self.tick_order_on_working_grid(working_grid, order.unwrap());
 
-        if done_working_grid.is_some() {
-            self.done_grids.push(done_working_grid.unwrap().full_grid);
+        if !done_working_grids.is_empty() {
+            self.grid = done_working_grids[0].full_grid;
+            self.working_grids.clear();
         }
         
         true
     }
     
-    pub fn tick_order_on_working_grid(&mut self, mut working_grid: WorkingGrid, pos: IVec2) -> Option<WorkingGrid> {
+    pub fn tick_order_on_working_grid(&mut self, mut working_grid: WorkingGrid, pos: IVec2) -> Vec<WorkingGrid> {
         let node_index = get_node_index_from_pos(pos);
         let value_type = working_grid.get_node_value_with_node_index(node_index).unwrap();
         
         let mut grid_ok = true;
         
         let mut new_grids = vec![];
+        let mut new_values_positions = vec![];
         for req in self.get_reqs_for_value_type(value_type) {
             let req_pos = pos + req.offset;
             
@@ -81,22 +84,12 @@ impl GridManager {
             }
             
             let req_node_index = get_node_index_from_pos(req_pos);
-            
             let already_set_value = working_grid.empty_grid.nodes[req_node_index].value;
+            
+            
             if already_set_value.is_none() {
-                for req_value_type in req.req_types.iter() {
-                    let satisfied = working_grid.full_grid.nodes[req_node_index].value == Some(*req_value_type);
-                    if satisfied {
-                        continue
-                    }
-
-                    let mut new_working_grid = working_grid.to_owned();
-
-                    new_working_grid.set_node_value_with_node_index(req_node_index, Some(*req_value_type));
-                    new_working_grid.orders.push_back(req_pos);
-
-                    new_grids.push(new_working_grid);
-                }
+                new_values_positions.push((req_pos, req_node_index, req.req_types.clone()));
+                
             } else {
                 let already_set_value = already_set_value.unwrap();
                 let value_found = req.req_types.iter().find(|t| {**t == already_set_value}).is_some();
@@ -107,17 +100,53 @@ impl GridManager {
             }
         }
         
-        if new_grids.is_empty() {
-            if grid_ok {
-                return Some(working_grid);
-            }
-        } else {
-            for new_working_grid in new_grids {
-                self.insert_working_grid(new_working_grid);
+        if !new_values_positions.is_empty() {
+            let mut permutation_indices: Vec<_> = repeat(0).take(new_values_positions.len()).collect();
+            let last_index = new_values_positions.len();
+            while permutation_indices[0] < new_values_positions[0].2.len() {
+                
+                let mut new_working_grid = working_grid.to_owned();
+                
+                for i in 0..last_index {
+                    let (req_pos, req_node_index, reqs) = &new_values_positions[i];
+                    let req_value_type = reqs[permutation_indices[i]];
+                    
+                    new_working_grid.set_node_value_with_node_index(*req_node_index, Some(req_value_type));
+
+                    let satisfied = working_grid.full_grid.nodes[*req_node_index].value == Some(req_value_type);
+                    if !satisfied {
+                        new_working_grid.orders.push_back(*req_pos);
+                    }
+                }
+
+                new_grids.push(new_working_grid);
+                
+                permutation_indices[last_index - 1] += 1;
+                for i in (1..last_index).rev() {
+                    if permutation_indices[i] >= new_values_positions[i].2.len() {
+                        permutation_indices[i] = 0;
+                        permutation_indices[i - 1] += 1;
+                    } else {
+                        break
+                    }
+                }
             }
         }
 
-        None
+        if new_grids.is_empty() && !working_grid.orders.is_empty() {
+            self.insert_working_grid(working_grid);
+        }
+
+        let mut done_grids = vec![];
+        for new_working_grid in new_grids {
+            if new_working_grid.orders.is_empty() {
+                done_grids.push(new_working_grid)
+            } else {
+                self.insert_working_grid(new_working_grid);
+            }
+        }
+        
+        done_grids
     }
     
     pub fn get_reqs_for_value_type(&self, value_type: ValueType) -> &[NeighborReq] {
@@ -125,7 +154,7 @@ impl GridManager {
     } 
     
     pub fn insert_working_grid(&mut self, working_grid: WorkingGrid) {
-        let res = self.working_grids.binary_search_by(|w| {working_grid.orders.len().cmp(&w.orders.len())});
+        let res = self.working_grids.binary_search_by(|w| {w.orders.len().cmp(&working_grid.orders.len())});
         let index = if res.is_err() { res.err().unwrap() } else { res.unwrap() };
 
         self.working_grids.insert(index, working_grid);

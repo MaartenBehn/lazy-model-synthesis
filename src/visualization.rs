@@ -34,6 +34,7 @@ pub struct Visualization {
     run: bool,
     run_ticks_per_frame: usize,
     pointer_pos_in_grid: Option<Vec2>,
+    current_working_grid: Option<usize>,
 }
 
 impl Visualization {
@@ -64,6 +65,7 @@ impl Visualization {
             run: false,
             run_ticks_per_frame: 10,
             pointer_pos_in_grid: None,
+            current_working_grid: None,
         };
         v.place_random_value();
 
@@ -76,7 +78,6 @@ impl Visualization {
         frame_index: usize,
         _delta_time: Duration,
     ) -> Result<()> {
-        
         if base.controls.mouse_left && self.selector.last_selected.is_some() && self.selector.value_type_to_place.is_some() {
             self.state_saver.get_state_mut().select_value(
                 self.selector.last_selected.unwrap(), 
@@ -94,19 +95,28 @@ impl Visualization {
         }
         self.state_saver.set_next_tick(TickType::None);
         
-        self.selector.add_to_render_data(self.pointer_pos_in_grid, &mut self.state_saver.get_state_mut().grid);
 
-        
-        let working_grids = &self.state_saver.get_state().working_grids;
-        if !working_grids.is_empty() {
-            self.grid_renderer.set_chunk_data(0, GRID_SIZE, &working_grids[0].full_grid.render_data);
-        } else {
-            self.grid_renderer.set_chunk_data(0, GRID_SIZE, &self.state_saver.get_state().grid.render_data);
+        if self.current_working_grid.is_some() && self.current_working_grid.unwrap() >= self.state_saver.get_state().working_grids.len() {
+            self.current_working_grid = None;
         }
         
-        self.grid_renderer.update(&mut base.context, base.swapchain.format, frame_index);
+        let working_grids = &mut self.state_saver.get_state_mut().working_grids;
+        if self.current_working_grid.is_some() {
+            self.selector.add_to_render_data(self.pointer_pos_in_grid, &mut working_grids[self.current_working_grid.unwrap()].full_grid);
+            self.grid_renderer.set_chunk_data(0, GRID_SIZE, &working_grids[self.current_working_grid.unwrap()].full_grid.render_data);
+            
+            self.grid_renderer.update(&mut base.context, base.swapchain.format, frame_index);
 
-        self.selector.clear_from_render_data(&mut self.state_saver.get_state_mut().grid);
+            self.selector.clear_from_render_data(&mut working_grids[self.current_working_grid.unwrap()].full_grid);
+            
+        } else {
+            self.selector.add_to_render_data(self.pointer_pos_in_grid, &mut self.state_saver.get_state_mut().grid);
+            self.grid_renderer.set_chunk_data(0, GRID_SIZE, &self.state_saver.get_state().grid.render_data);
+
+            self.grid_renderer.update(&mut base.context, base.swapchain.format, frame_index);
+
+            self.selector.clear_from_render_data(&mut self.state_saver.get_state_mut().grid);
+        }
         
         Ok(())
     }
@@ -223,7 +233,6 @@ impl Visualization {
 
                     ui.separator();
                     
-                    
                     div(ui, |ui| {
                         ui.label("Place: ");
 
@@ -255,6 +264,33 @@ impl Visualization {
                             ui.label("Out of bounds");
                         });
                     }
+                });
+            });
+
+            egui::SidePanel::new(Side::Right, Id::new("Right Panel")).show(ctx, |ui| {
+                puffin::profile_scope!("Right Panel");
+                
+                ui.set_min_width(200.0);
+                
+                if ui.button("Unselect").clicked() {
+                    self.current_working_grid = None;
+                }
+
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
+                        for (i, working_grid) in self.state_saver.get_state().working_grids.iter().enumerate() {
+
+                            let response = if self.current_working_grid == Some(i) {
+                                ui.heading(format!("{i}: orders: {}", working_grid.orders.len()))
+                            } else {
+                                ui.label(format!("{i}: orders: {}", working_grid.orders.len()))
+                            };
+                            
+                            if response.hovered() {
+                                self.current_working_grid = Some(i);
+                            }
+                        }
+                    });
                 });
             });
             
@@ -302,11 +338,5 @@ fn egui_vec2_to_glam_vec2(v: egui::Vec2) -> glam::Vec2 {
 fn div(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui)) {
     Frame::none().show(ui, |ui| {
         ui.with_layout(Layout::left_to_right(Align::TOP), add_contents);
-    });
-}
-
-fn div_vert(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui)) {
-    Frame::none().show(ui, |ui| {
-        ui.with_layout(Layout::top_down(Align::LEFT), add_contents);
     });
 }
