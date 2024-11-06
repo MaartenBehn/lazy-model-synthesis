@@ -2,7 +2,7 @@ use std::mem;
 use std::mem::{align_of, size_of};
 use octa_force::egui::{Image, TextureId};
 use octa_force::egui_ash_renderer::Renderer;
-use octa_force::glam::UVec2;
+use octa_force::glam::{ivec2, IVec2, UVec2};
 use octa_force::ImageAndView;
 use octa_force::log::info;
 use octa_force::puffin_egui::puffin;
@@ -12,7 +12,8 @@ use octa_force::vulkan::ash::vk::{BufferUsageFlags, Format, ImageUsageFlags};
 use octa_force::anyhow::Result;
 use octa_force::egui::load::SizedTexture;
 use octa_force::vulkan::gpu_allocator::MemoryLocation;
-use crate::render::node_render_data::NodeRenderData;
+use crate::render::grid_shader::grid_shader;
+use crate::value::Value;
 
 const DISPATCH_GROUP_SIZE_X: u32 = 32;
 const DISPATCH_GROUP_SIZE_Y: u32 = 32;
@@ -36,6 +37,7 @@ pub struct GridRenderer {
     render_pipeline_layout: PipelineLayout,
     render_pipeline: ComputePipeline,
 
+    render_data: RenderData,
     render_buffer: Buffer,
     chunk_buffer: Buffer
 }
@@ -45,10 +47,10 @@ pub struct GridRenderer {
 #[repr(C)]
 struct RenderData {
     chunk_size: u32,
+    selector_pos: IVec2,
 }
 
 impl GridRenderer {
-
     pub fn new(
         context: &mut Context,
         egui_renderer: &mut Renderer,
@@ -136,7 +138,7 @@ impl GridRenderer {
         let render_pipeline = context.create_compute_pipeline(
             &render_pipeline_layout,
             ComputePipelineCreateInfo {
-                shader_source: &include_bytes!("../../shaders/grid_render.comp.spv")[..],
+                shader_source: grid_shader(),
             },
         )?;
 
@@ -146,14 +148,16 @@ impl GridRenderer {
             size_of::<RenderData>() as _,
         )?;
 
-        render_buffer.copy_data_to_buffer(&[RenderData {
+        let render_data = RenderData {
             chunk_size: chunk_size as u32,
-        }])?;
+            selector_pos: ivec2(-1, -1),
+        };
+        render_buffer.copy_data_to_buffer(&[render_data])?;
 
         let chunk_buffer = context.create_buffer(
             BufferUsageFlags::STORAGE_BUFFER,
             MemoryLocation::CpuToGpu,
-            (chunk_size * chunk_size * size_of::<NodeRenderData>()) as _
+            (chunk_size * chunk_size * size_of::<Value>()) as _
         )?;
 
         Ok(GridRenderer {
@@ -174,6 +178,7 @@ impl GridRenderer {
             render_pipeline_layout,
             render_pipeline,
 
+            render_data,
             render_buffer,
             chunk_buffer,
         })
@@ -279,11 +284,18 @@ impl GridRenderer {
         }
     }
 
-    pub fn set_chunk_data(&mut self, chunk_index: usize, chunk_size: usize, chunk_data: &[NodeRenderData]) {
-        self.chunk_buffer.copy_data_to_buffer_complex(
-            chunk_data,
-            chunk_index * chunk_size * chunk_size, align_of::<NodeRenderData>()
-        ).unwrap()
+    pub fn set_chunk_data(&mut self, chunk_data: &[Value]) {
+        self.chunk_buffer.copy_data_to_buffer(chunk_data).unwrap()
+    }
+
+    pub fn set_selector_pos(&mut self, selector_pos: Option<IVec2>) {
+        if selector_pos.is_none() {
+            self.render_data.selector_pos = ivec2(-1, -1);
+        } else {
+            self.render_data.selector_pos = selector_pos.unwrap();
+        }
+        
+        self.render_buffer.copy_data_to_buffer(&[self.render_data]).unwrap();
     }
 
     pub fn render(&mut self, command_buffer: &CommandBuffer, frame_index: usize) {

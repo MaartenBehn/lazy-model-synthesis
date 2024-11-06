@@ -1,3 +1,5 @@
+extern crate glsl;
+
 use std::time::Duration;
 use octa_force::{App, BaseApp, EngineConfig, EngineFeatureValue};
 use octa_force::anyhow::Result;
@@ -12,6 +14,7 @@ mod grid;
 mod rules;
 mod visualization;
 mod grid_manager;
+mod value;
 
 const WIDTH: u32 = 1920; // 2200;
 const HEIGHT: u32 = 1080; // 1250;

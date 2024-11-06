@@ -13,12 +13,11 @@ use octa_force::glam::{ivec2, vec2, Vec2};
 use octa_force::puffin_egui::puffin;
 use octa_force::vulkan::ash::vk::AttachmentLoadOp;
 use crate::grid_manager::GridManager;
-use crate::render::node_render_data::NUM_VALUE_TYPES;
 use crate::render::renderer::GridRenderer;
 use crate::render::selector::Selector;
 use crate::LazyModelSynthesis;
-use crate::rules::ValueType;
 use crate::util::state_saver::StateSaver;
+use crate::value::Value;
 
 pub const GRID_SIZE: usize = 32;
 const DEBUG_MODE: bool = true;
@@ -40,7 +39,7 @@ pub struct Visualization {
 impl Visualization {
     pub fn new(base: &mut BaseApp<LazyModelSynthesis>) -> Result<Self> {
 
-        let grid = Grid::new(Some(ValueType::Stone));
+        let grid = Grid::new(Value(1));
         
         let grid_manager = GridManager::new(grid);
         
@@ -78,10 +77,10 @@ impl Visualization {
         frame_index: usize,
         _delta_time: Duration,
     ) -> Result<()> {
-        if base.controls.mouse_left && self.selector.last_selected.is_some() && self.selector.value_type_to_place.is_some() {
+        if base.controls.mouse_left && self.selector.selected_pos.is_some() && self.selector.value_type_to_place.is_some() {
             self.state_saver.get_state_mut().select_value(
-                self.selector.last_selected.unwrap(), 
-                self.selector.value_type_to_place.unwrap()
+                self.selector.selected_pos.unwrap(),
+                self.selector.value_type_to_place
             );
         }
         
@@ -94,54 +93,63 @@ impl Visualization {
             self.state_saver.tick();
         }
         self.state_saver.set_next_tick(TickType::None);
-        
+
 
         if self.current_working_grid.is_some() && self.current_working_grid.unwrap() >= self.state_saver.get_state().working_grids.len() {
             self.current_working_grid = None;
         }
-        
+
         let working_grids = &mut self.state_saver.get_state_mut().working_grids;
         if self.current_working_grid.is_some() {
-            self.selector.add_to_render_data(self.pointer_pos_in_grid, &mut working_grids[self.current_working_grid.unwrap()].full_grid);
-            self.grid_renderer.set_chunk_data(0, GRID_SIZE, &working_grids[self.current_working_grid.unwrap()].full_grid.render_data);
+            self.selector.set_selected_pos(self.pointer_pos_in_grid, &mut working_grids[self.current_working_grid.unwrap()].full_grid);
             
+            self.grid_renderer.set_selector_pos(self.selector.selected_pos);
+            self.grid_renderer.set_chunk_data(&working_grids[self.current_working_grid.unwrap()].full_grid.nodes);
+
             self.grid_renderer.update(&mut base.context, base.swapchain.format, frame_index);
 
             self.selector.clear_from_render_data(&mut working_grids[self.current_working_grid.unwrap()].full_grid);
-            
+
         } else {
-            self.selector.add_to_render_data(self.pointer_pos_in_grid, &mut self.state_saver.get_state_mut().grid);
-            self.grid_renderer.set_chunk_data(0, GRID_SIZE, &self.state_saver.get_state().grid.render_data);
+            self.selector.set_selected_pos(self.pointer_pos_in_grid, &mut self.state_saver.get_state_mut().grid);
+
+            self.grid_renderer.set_selector_pos(self.selector.selected_pos);
+            self.grid_renderer.set_chunk_data(&self.state_saver.get_state().grid.nodes);
 
             self.grid_renderer.update(&mut base.context, base.swapchain.format, frame_index);
 
             self.selector.clear_from_render_data(&mut self.state_saver.get_state_mut().grid);
         }
         
+        if self.state_saver.get_state_mut().working_grids.is_empty() {
+            self.place_random_value();
+        }
+
         Ok(())
     }
     
     fn place_random_value(&mut self) {
+        /*
         let pos = ivec2(fastrand::i32(0..32), fastrand::i32(0..32));
         let node_index = get_node_index_from_pos(pos);
         let node = self.state_saver.get_state().grid.nodes[node_index];
         let v = &node.value;
         let next_vt = if v.is_some() {
             let vt = v.unwrap();
-            if vt == ValueType::Stone {
-                ValueType::Sand
-            } else if vt == ValueType::Grass {
-                ValueType::Stone
+            if vt == Value::Stone {
+                Value::Sand
+            } else if vt == Value::Grass {
+                Value::Stone
             } else {
-                ValueType::Stone
+                Value::Stone
             }
         } else {
-            ValueType::Grass
+            Value::Grass
         };
 
         self.state_saver.get_state_mut().select_value(pos, next_vt);
-
-        self.run = false;
+        
+         */
     }
 
     pub fn record_render_commands(
@@ -236,13 +244,13 @@ impl Visualization {
                     div(ui, |ui| {
                         ui.label("Place: ");
 
-                        for i in 0..NUM_VALUE_TYPES {
-                            let value_type = ValueType::from_value_nr(i);
+                        for i in 0..3 {
+                            let value = Value::from_value_nr(i);
                             
-                            let mut checked = self.selector.value_type_to_place == Some(value_type); 
-                            ui.checkbox(&mut checked, format!("{:?}", value_type));
+                            let mut checked = self.selector.value_type_to_place == value; 
+                            ui.checkbox(&mut checked, format!("{:?}", value));
                             if checked {
-                                self.selector.value_type_to_place = Some(value_type);
+                                self.selector.value_type_to_place = value;
                             }
                         }
                         
@@ -254,7 +262,7 @@ impl Visualization {
                         ui.heading("Selected Node");
                     });
 
-                    if let Some(pos) = self.selector.last_selected {
+                    if let Some(pos) = self.selector.selected_pos {
                         div(ui, |ui| {
                             ui.label(format!("Pos: [{:0>2} {:0>2}]", pos.x, pos.y));
                         });
@@ -269,9 +277,9 @@ impl Visualization {
 
             egui::SidePanel::new(Side::Right, Id::new("Right Panel")).show(ctx, |ui| {
                 puffin::profile_scope!("Right Panel");
-                
+
                 ui.set_min_width(200.0);
-                
+
                 if ui.button("Unselect").clicked() {
                     self.current_working_grid = None;
                 }
@@ -285,7 +293,7 @@ impl Visualization {
                             } else {
                                 ui.label(format!("{i}: orders: {}", working_grid.orders.len()))
                             };
-                            
+
                             if response.hovered() {
                                 self.current_working_grid = Some(i);
                             }

@@ -1,53 +1,20 @@
 use octa_force::glam::{ivec2, IVec2};
-use crate::render::node_render_data::NodeRenderData;
-use crate::rules::ValueType;
+use crate::value::Value;
 use crate::visualization::GRID_SIZE;
 
 pub type NodeIndex = usize;
 
-const NODES_PER_GRID: usize = GRID_SIZE * GRID_SIZE;
+pub const NODES_PER_GRID: usize = GRID_SIZE * GRID_SIZE;
 
 #[derive(Copy, Clone)]
 pub struct Grid {
-    pub nodes: [Node; NODES_PER_GRID],
-    pub render_data: [NodeRenderData; NODES_PER_GRID],
-}
-
-#[derive(Copy, Clone)]
-pub struct Node{
-    pub(crate) value: Option<ValueType>
-}
-
-#[derive(Copy, Clone)]
-pub struct GridPosConverter {
-    pub node_list_length: usize,
-    pub grid_side_length: usize,
-    pub grid_size: IVec2,
+    pub nodes: [Value; NODES_PER_GRID],
 }
 
 impl Grid {
-    pub fn new(base_value: Option<ValueType>) -> Self {
+    pub fn new(base_value: Value) -> Self {
         Grid {
-            nodes: [Node::new(base_value); NODES_PER_GRID],
-            render_data: [NodeRenderData::new(base_value); NODES_PER_GRID],
-        }
-    }
-    
-    pub fn set_node_value_with_index(&mut self, node_index: NodeIndex, value: Option<ValueType>) {
-        self.nodes[node_index].value = value;
-        
-        if value.is_some() {
-            self.render_data[node_index].set_selected_value_type(value.unwrap());
-        } else {
-            self.render_data[node_index].unselected_value_type();
-        }
-    } 
-}
-
-impl Node {
-    pub fn new(base_value: Option<ValueType>) -> Self {
-        Node {
-            value: base_value,
+            nodes: [base_value; NODES_PER_GRID],
         }
     }
 }

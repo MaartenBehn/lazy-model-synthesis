@@ -1,106 +1,91 @@
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use octa_force::glam::IVec2;
+use crate::value::Value;
 
 pub const NUM_VALUES: usize = 3;
 pub const NUM_REQS: usize = 8;
 
-pub type ValueNr = u32;
-
-#[derive(Default, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, IntoPrimitive, TryFromPrimitive, Debug)]
-#[repr(u32)]
-pub enum ValueType {
-    #[default]
-    Stone = 0,
-    Grass,
-    Sand,
-}
 
 #[derive(Clone)]
 pub struct Rule {
-    pub value_type: ValueType,
+    pub value_type: Value,
     pub neighbor_reqs: Vec<NeighborReq>,
 }
 
 #[derive(Clone)]
 pub struct NeighborReq {
-    pub req_types: Vec<ValueType>,
+    pub req_types: Vec<Value>,
     pub offset: IVec2,
 }
 
+/*
 pub fn get_example_rules() -> Vec<Rule> {
     vec![
         Rule {
-            value_type: ValueType::Stone,
+            value_type: Value::Stone,
             neighbor_reqs: vec![
                 NeighborReq {
-                    req_types: vec![ValueType::Stone, ValueType::Grass],
+                    req_types: vec![Value::Stone, Value::Grass],
                     offset: IVec2::new(1, 0),
                 },
                 NeighborReq {
-                    req_types: vec![ValueType::Stone, ValueType::Grass],
+                    req_types: vec![Value::Stone, Value::Grass],
                     offset: IVec2::new(-1, 0),
                 },
                 NeighborReq {
-                    req_types: vec![ValueType::Stone],
+                    req_types: vec![Value::Stone],
                     offset: IVec2::new(0, 1),
                 },
                 NeighborReq {
-                    req_types: vec![ValueType::Stone],
+                    req_types: vec![Value::Stone],
                     offset: IVec2::new(0, -1),
                 },
             ],
         },
         Rule {
-            value_type: ValueType::Grass,
+            value_type: Value::Grass,
             neighbor_reqs: vec![
                 NeighborReq {
-                    req_types: vec![ValueType::Grass, ValueType::Stone, ValueType::Sand],
+                    req_types: vec![Value::Grass, Value::Stone, Value::Sand],
                     offset: IVec2::new(1, 0),
                 },
                 NeighborReq {
-                    req_types: vec![ValueType::Grass, ValueType::Stone, ValueType::Sand],
+                    req_types: vec![Value::Grass, Value::Stone, Value::Sand],
                     offset: IVec2::new(-1, 0),
                 },
                 NeighborReq {
-                    req_types: vec![ValueType::Grass],
+                    req_types: vec![Value::Grass],
                     offset: IVec2::new(0, 1),
                 },
                 NeighborReq {
-                    req_types: vec![ValueType::Grass],
+                    req_types: vec![Value::Grass],
                     offset: IVec2::new(0, -1),
                 },
             ],
         },
         Rule {
-            value_type: ValueType::Sand,
+            value_type: Value::Sand,
             neighbor_reqs: vec![
                 NeighborReq {
-                    req_types: vec![ValueType::Grass, ValueType::Sand],
+                    req_types: vec![Value::Grass, Value::Sand],
                     offset: IVec2::new(1, 0),
                 },
                 NeighborReq {
-                    req_types: vec![ValueType::Grass, ValueType::Sand],
+                    req_types: vec![Value::Grass, Value::Sand],
                     offset: IVec2::new(-1, 0),
                 },
                 NeighborReq {
-                    req_types: vec![ValueType::Sand],
+                    req_types: vec![Value::Sand],
                     offset: IVec2::new(0, 1),
                 },
                 NeighborReq {
-                    req_types: vec![ValueType::Sand],
+                    req_types: vec![Value::Sand],
                     offset: IVec2::new(0, -1),
                 },
             ],
         },
     ]
 }
+ */
 
-impl ValueType {
-    pub fn get_value_nr(&self) -> ValueNr {
-        (*self).into()
-    }
-    
-    pub fn from_value_nr(value_nr: ValueNr) -> ValueType {
-        ValueType::try_from_primitive(value_nr as u32).unwrap()
-    }
-}
+
