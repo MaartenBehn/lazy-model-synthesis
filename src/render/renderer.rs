@@ -1,5 +1,5 @@
 use std::mem;
-use std::mem::{align_of, size_of};
+use std::mem::{size_of};
 use octa_force::egui::{Image, TextureId};
 use octa_force::egui_ash_renderer::Renderer;
 use octa_force::glam::{ivec2, IVec2, UVec2};
@@ -135,6 +135,7 @@ impl GridRenderer {
             &[&render_descriptor_layout],
             &[]
         )?;
+        
         let render_pipeline = context.create_compute_pipeline(
             &render_pipeline_layout,
             ComputePipelineCreateInfo {

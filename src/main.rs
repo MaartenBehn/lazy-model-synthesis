@@ -1,5 +1,3 @@
-extern crate glsl;
-
 use std::time::Duration;
 use octa_force::{App, BaseApp, EngineConfig, EngineFeatureValue};
 use octa_force::anyhow::Result;

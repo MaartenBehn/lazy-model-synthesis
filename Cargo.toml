@@ -11,5 +11,4 @@ octa-force = { git = "https://github.com/MaartenBehn/octa-force-rs.git", version
 rclite = "0.2.4"
 num_enum = "0.7.3"
 fastrand = "2.1.0"
-glsl = { path = "../glsl/glsl", features = ["spirv"] }
-glsl-quasiquote = { path = "../glsl/glsl-quasiquote" }
+glsl_compiler = "0.1.0"

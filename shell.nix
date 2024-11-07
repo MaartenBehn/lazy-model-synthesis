@@ -3,7 +3,7 @@
 pkgs.mkShell rec {
 
   name = "lazy-model-synthesis";
-  RUSTC_VERSION = "nightly";
+  RUSTC_VERSION = "stable";
 
   shellHook = ''
     export PATH=$PATH:''${CARGO_HOME:-~/.cargo}/bin
