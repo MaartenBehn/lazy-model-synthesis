@@ -3,12 +3,19 @@ name = "lazy-wfc"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+resolver = "2"
+members = ["reloaded"]
+
+[features]
+default = []
+reload = ["dep:hot-lib-reloader"]
+
+[workspace.dependencies]
+# octa-force = { git = "https://github.com/MaartenBehn/octa-force-rs.git", version = "0.2.0" }
+octa-force = { path = "../octa-force-rs" }
 
 [dependencies]
-# octa-force = { path = "../octa-force-rs" }
-octa-force = { git = "https://github.com/MaartenBehn/octa-force-rs.git", version = "0.1.17" }
-rclite = "0.2.4"
-num_enum = "0.7.3"
-fastrand = "2.1.0"
-glsl_compiler = "0.1.0"
+octa-force.workspace = true
+hot-lib-reloader = { version = "^0.7", optional = true }
+reloaded = { path = "reloaded" }

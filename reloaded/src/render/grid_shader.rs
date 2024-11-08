@@ -12,7 +12,7 @@ pub fn grid_shader() -> &'static [u8] {
         }
     
         #define BORDER_SIZE 0.02
-        #define SELECTOR_COLOR rgb(255, 255, 255)
+        #define SELECTOR_COLOR rgb(255, 255, 0)
     
         layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
     

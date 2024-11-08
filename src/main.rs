@@ -1,87 +1,83 @@
 use std::time::Duration;
-use octa_force::{App, BaseApp, EngineConfig, EngineFeatureValue};
-use octa_force::anyhow::Result;
+use hot_lib_reloader::LibReloadObserver;
+use octa_force::{Engine, OctaResult};
 use octa_force::egui_winit::winit::event::WindowEvent;
-use octa_force::glam::uvec2;
-use octa_force::gui::Gui;
-use crate::visualization::Visualization;
+use octa_force::log::debug;
+#[cfg(feature = "reload")]
+use hot_lib::*;
+#[cfg(not(feature = "reload"))]
+use reloaded::*;
 
-mod util;
-pub mod render;
-mod grid;
-mod rules;
-mod visualization;
-mod grid_manager;
-mod value;
+// The value of `dylib = "..."` should be the library containing the hot-reloadable functions
+// It should normally be the crate name of your sub-crate.
+#[cfg(feature = "reload")]
+#[hot_lib_reloader::hot_module(dylib = "reloaded")]
+mod hot_lib {
+    // Reads public no_mangle functions from lib.rs and  generates hot-reloadable
+    // wrapper functions with the same signature inside this module.
+    // Note that this path relative to the project root (or absolute)
+    hot_functions_from_file!("reloaded/src/lib.rs");
 
-const WIDTH: u32 = 1920; // 2200;
-const HEIGHT: u32 = 1080; // 1250;
-const APP_NAME: &str = "Lazy Model Synthesis";
+    #[lib_updated]
+    pub fn was_updated() -> bool {}
 
-fn main() -> Result<()> {
-    octa_force::run::<LazyModelSynthesis>(EngineConfig {
-        name: APP_NAME.to_string(),
-        start_size: uvec2(WIDTH, HEIGHT),
-        ray_tracing: EngineFeatureValue::NotUsed,
-        compute_rendering: EngineFeatureValue::Needed,
-        validation_layers: EngineFeatureValue::Needed,
-        shader_debug_printing: EngineFeatureValue::Needed,
-    })
+    // Because we generate functions with the exact same signatures,
+    // we need to import types used
+    use std::time::Duration;
+    use crate::WindowEvent;
+    use octa_force::EngineConfig;
+    use octa_force::Engine;
+    use octa_force::OctaResult;
+    pub use reloaded::State;
 }
 
-struct LazyModelSynthesis {
-    visualization: Visualization,
-    
-    gui: Gui,
+fn main() {
+    let config = new_engine_config();
+    octa_force::run::<Game>(config).unwrap()
 }
 
-impl App for LazyModelSynthesis {
-    fn new(base: &mut BaseApp<Self>) -> Result<Self> {
+pub struct Game {
+    state: State,
+}
 
-        let visualization = Visualization::new(base)?;
-        
-        let mut gui = Gui::new(
-            &base.context,
-            base.swapchain.format,
-            base.swapchain.depth_format,
-            &base.window,
-            base.num_frames
-        )?;
-
-        Ok(Self {
-            visualization,
-            gui,
-        })
-    }
-
-    fn update(
-        &mut self,
-        base: &mut BaseApp<Self>,
-        frame_index: usize,
-        delta_time: Duration,
-    ) -> Result<()> {
-        self.visualization.update(base, frame_index, delta_time)?;
+impl Game {
+    fn check_recreate(&mut self, engine: &mut Engine) -> OctaResult<()> {
+        #[cfg(feature = "reload")]
+        {
+            if was_updated() {
+                debug!("Was hot reloaded");
+                self.state = new_state(engine)?;
+            }
+        }
         
         Ok(())
+    }
+}
+
+impl octa_force::State for Game {
+    fn new(engine: &mut Engine) -> OctaResult<Self> {
+        Ok(Self {
+            state: new_state(engine)?,
+        })
+    }
+    
+    fn update(&mut self, engine: &mut Engine, frame_index: usize, delta_time: Duration) -> OctaResult<()> {
+        update(&mut self.state, engine, frame_index, delta_time)
     }
 
     fn record_render_commands(
         &mut self,
-        base: &mut BaseApp<Self>,
+        engine: &mut Engine,
         frame_index: usize,
-    ) -> Result<()> {
-        self.visualization.record_render_commands(base, frame_index)?;
+    ) -> OctaResult<()> {
+        record_render_commands(&mut self.state, engine, frame_index)
+    }
 
-        Ok(())
+    fn on_window_event(&mut self, engine: &mut Engine, event: &WindowEvent) -> OctaResult<()> {
+        on_window_event(&mut self.state, engine, event)
     }
     
-    fn on_window_event(&mut self, base: &mut BaseApp<Self>, event: &WindowEvent) -> Result<()> {
-        self.visualization.on_window_event(base, event)?;
-
-        Ok(())
-    }
-
-    fn on_recreate_swapchain(&mut self, _base: &mut BaseApp<Self>) -> Result<()> {
-        Ok(())
+    fn on_recreate_swapchain(&mut self, engine: &mut Engine) -> OctaResult<()> {
+        on_recreate_swapchain(&mut self.state, engine)
     }
 }
