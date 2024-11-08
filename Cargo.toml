@@ -3,19 +3,13 @@ name = "lazy-wfc"
 version = "0.1.0"
 edition = "2021"
 
-[workspace]
-resolver = "2"
-members = ["reloaded"]
-
-[features]
-default = []
-reload = ["dep:hot-lib-reloader"]
-
-[workspace.dependencies]
-# octa-force = { git = "https://github.com/MaartenBehn/octa-force-rs.git", version = "0.2.0" }
-octa-force = { path = "../octa-force-rs" }
+[lib]
+name = "reload"
+path = "src/reload.rs"
+crate-type = ["rlib", "dylib"]
 
 [dependencies]
-octa-force.workspace = true
-hot-lib-reloader = { version = "^0.7", optional = true }
-reloaded = { path = "reloaded" }
+# octa-force = { path = "../octa-force-rs" }
+octa-force = { version = "0.2.1", git = "https://github.com/MaartenBehn/octa-force-rs" }
+fastrand = "2.1.0"
+glsl_compiler = "0.1.0"

@@ -1,83 +1,57 @@
 use std::time::Duration;
-use hot_lib_reloader::LibReloadObserver;
-use octa_force::{Engine, OctaResult};
+use reload::{on_recreate_swapchain, on_window_event, record_render_commands, update, RenderState, LogicState, new_render_state, new_logic_state};
+use octa_force::{Engine, EngineConfig, EngineFeatureValue, OctaResult};
+use octa_force::binding::{Binding, HotReloadBinding};
+use octa_force::binding::r#trait::BindingTrait;
 use octa_force::egui_winit::winit::event::WindowEvent;
-use octa_force::log::debug;
-#[cfg(feature = "reload")]
-use hot_lib::*;
-#[cfg(not(feature = "reload"))]
-use reloaded::*;
+use octa_force::glam::uvec2;
 
-// The value of `dylib = "..."` should be the library containing the hot-reloadable functions
-// It should normally be the crate name of your sub-crate.
-#[cfg(feature = "reload")]
-#[hot_lib_reloader::hot_module(dylib = "reloaded")]
-mod hot_lib {
-    // Reads public no_mangle functions from lib.rs and  generates hot-reloadable
-    // wrapper functions with the same signature inside this module.
-    // Note that this path relative to the project root (or absolute)
-    hot_functions_from_file!("reloaded/src/lib.rs");
-
-    #[lib_updated]
-    pub fn was_updated() -> bool {}
-
-    // Because we generate functions with the exact same signatures,
-    // we need to import types used
-    use std::time::Duration;
-    use crate::WindowEvent;
-    use octa_force::EngineConfig;
-    use octa_force::Engine;
-    use octa_force::OctaResult;
-    pub use reloaded::State;
-}
+const WIDTH: u32 = 1920; // 2200;
+const HEIGHT: u32 = 1080; // 1250;
+const APP_NAME: &str = "Lazy Model Synthesis";
 
 fn main() {
-    let config = new_engine_config();
-    octa_force::run::<Game>(config).unwrap()
+    octa_force::run::<App>(
+        EngineConfig {
+            name: APP_NAME.to_string(),
+            start_size: uvec2(WIDTH, HEIGHT),
+            ray_tracing: EngineFeatureValue::NotUsed,
+            compute_rendering: EngineFeatureValue::Needed,
+            validation_layers: EngineFeatureValue::Needed,
+            shader_debug_printing: EngineFeatureValue::Needed,
+        },
+        vec![Binding::HotReload(
+            HotReloadBinding::new("target/debug".to_string(), "reload".to_string()).unwrap())]).unwrap()
 }
 
-pub struct Game {
-    state: State,
+struct App {}
+
+impl BindingTrait for App {
+    type RenderState = RenderState;
+    type LogicState = LogicState;
+
+    fn new_render_state(engine: &mut Engine) -> OctaResult<Self::RenderState> {
+        new_render_state(engine)
+    }
+
+    fn new_logic_state(engine: &mut Engine) -> OctaResult<Self::LogicState> {
+        new_logic_state(engine)
+    }
+
+    fn update(render_state: &mut RenderState, logic_state: &mut LogicState, engine: &mut Engine, image_index: usize, delta_time: Duration) -> OctaResult<()> {
+        update(render_state, logic_state, engine, image_index, delta_time)
+    }
+
+    fn record_render_commands(render_state: &mut RenderState, logic_state: &mut LogicState, engine: &mut Engine, image_index: usize) -> OctaResult<()> {
+        record_render_commands(render_state, logic_state, engine, image_index)
+    }
+
+    fn on_window_event(render_state: &mut RenderState, logic_state: &mut LogicState, engine: &mut Engine, event: &WindowEvent) -> OctaResult<()> {
+        on_window_event(render_state, logic_state, engine, event)
+    }
+
+    fn on_recreate_swapchain(render_state: &mut RenderState, logic_state: &mut LogicState, engine: &mut Engine) -> OctaResult<()> {
+        on_recreate_swapchain(render_state, logic_state, engine)
+    }
 }
 
-impl Game {
-    fn check_recreate(&mut self, engine: &mut Engine) -> OctaResult<()> {
-        #[cfg(feature = "reload")]
-        {
-            if was_updated() {
-                debug!("Was hot reloaded");
-                self.state = new_state(engine)?;
-            }
-        }
-        
-        Ok(())
-    }
-}
-
-impl octa_force::State for Game {
-    fn new(engine: &mut Engine) -> OctaResult<Self> {
-        Ok(Self {
-            state: new_state(engine)?,
-        })
-    }
-    
-    fn update(&mut self, engine: &mut Engine, frame_index: usize, delta_time: Duration) -> OctaResult<()> {
-        update(&mut self.state, engine, frame_index, delta_time)
-    }
-
-    fn record_render_commands(
-        &mut self,
-        engine: &mut Engine,
-        frame_index: usize,
-    ) -> OctaResult<()> {
-        record_render_commands(&mut self.state, engine, frame_index)
-    }
-
-    fn on_window_event(&mut self, engine: &mut Engine, event: &WindowEvent) -> OctaResult<()> {
-        on_window_event(&mut self.state, engine, event)
-    }
-    
-    fn on_recreate_swapchain(&mut self, engine: &mut Engine) -> OctaResult<()> {
-        on_recreate_swapchain(&mut self.state, engine)
-    }
-}

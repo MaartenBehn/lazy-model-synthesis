@@ -1,4 +1,4 @@
-use crate::grid::Grid;
+use crate::grid::{get_node_index_from_pos, Grid};
 use crate::util::state_saver::TickType;
 use std::time::Duration;
 use octa_force::gui::Gui;
@@ -24,9 +24,9 @@ const DEBUG_MODE: bool = true;
 pub struct Visualization {
     pub gui: Gui,
     
-    //pub state_saver: StateSaver<GridManager>,
+    pub state_saver: StateSaver<GridManager>,
 
-    //pub grid_renderer: GridRenderer,
+    pub grid_renderer: GridRenderer,
     pub selector: Selector,
 
     run: bool,
@@ -52,21 +52,21 @@ impl Visualization {
             engine.num_frames
         )?;
 
-        //let grid_renderer = GridRenderer::new(&mut engine.context, &mut gui.renderer, engine.num_frames, GRID_SIZE, 1)?;
+        let grid_renderer = GridRenderer::new(&mut engine.context, &mut gui.renderer, engine.num_frames, GRID_SIZE, 1)?;
         let selector = Selector::new();
         
         
         let mut v = Visualization {
-            //state_saver,
+            state_saver,
             gui,
-            //grid_renderer,
+            grid_renderer,
             selector,
             run: false,
             run_ticks_per_frame: 10,
             pointer_pos_in_grid: None,
             current_working_grid: None,
         };
-        v.place_random_value();
+        //v.place_random_value();
         
         Ok(v)
     }
@@ -78,16 +78,13 @@ impl Visualization {
         _delta_time: Duration,
     ) -> Result<()> {
         if engine.controls.mouse_left && self.selector.selected_pos.is_some() && self.selector.value_type_to_place.is_some() {
-            /*
             self.state_saver.get_state_mut().select_value(
                 self.selector.selected_pos.unwrap(),
                 self.selector.value_type_to_place
             );
-            
-             */
         }
         
-        /*
+        
         if self.run  {
             
             self.state_saver.set_next_tick(TickType::ForwardSave);
@@ -99,9 +96,7 @@ impl Visualization {
         }
         self.state_saver.set_next_tick(TickType::None);
         
-         
-
-
+        
         if self.current_working_grid.is_some() && self.current_working_grid.unwrap() >= self.state_saver.get_state().working_grids.len() {
             self.current_working_grid = None;
         }
@@ -135,6 +130,7 @@ impl Visualization {
             self.selector.clear_from_render_data(&mut self.state_saver.get_state_mut().grid);
         }
         
+        /*
         if self.state_saver.get_state_mut().working_grids.is_empty() {
             self.place_random_value();
         }
@@ -144,8 +140,8 @@ impl Visualization {
         Ok(())
     }
     
+    /*
     fn place_random_value(&mut self) {
-        /*
         let pos = ivec2(fastrand::i32(0..32), fastrand::i32(0..32));
         let node_index = get_node_index_from_pos(pos);
         let node = self.state_saver.get_state().grid.nodes[node_index];
@@ -164,9 +160,9 @@ impl Visualization {
         };
 
         self.state_saver.get_state_mut().select_value(pos, next_vt);
-        
-         */
     }
+    
+     */
 
     pub fn record_render_commands(
         &mut self,
@@ -181,7 +177,7 @@ impl Visualization {
         let swap_chain_view = &engine.swapchain.images_and_views[frame_index].view;
         let swap_chain_depth_view = &engine.swapchain.depht_images_and_views[frame_index].view;
 
-        //self.grid_renderer.render(command_buffer, frame_index);
+        self.grid_renderer.render(command_buffer, frame_index);
 
         command_buffer.begin_rendering(swap_chain_view, swap_chain_depth_view, size, AttachmentLoadOp::CLEAR, None);
 
@@ -202,7 +198,6 @@ impl Visualization {
             // Mutate global style with above changes
             ctx.set_style(style);
             
-            /*
             egui::SidePanel::new(Side::Left, Id::new("Side Panel")).show(ctx, |ui| {
                 puffin::profile_scope!("Left Panel");
 
@@ -217,12 +212,12 @@ impl Visualization {
 
                         if ui.button("<<<").clicked() {
                             self.run = false;
-                            //self.state_saver.set_next_tick(TickType::Back);
+                            self.state_saver.set_next_tick(TickType::Back);
                         }
 
                         if ui.button(">>>").clicked() {
                             self.run = false;
-                            //self.state_saver.set_next_tick(TickType::ForwardSave);
+                            self.state_saver.set_next_tick(TickType::ForwardSave);
                         }
                     });
 
@@ -231,11 +226,11 @@ impl Visualization {
                     });
 
                     div(ui, |ui| {
-                        /*
+                        
                         let (current_saved, num_saved) = self.state_saver.get_step_state();
                         egui::ProgressBar::new(1.0 - (current_saved as f32 / num_saved as f32)).ui(ui);
                         
-                         */
+                         
                     });
 
                     div(ui, |ui| {
@@ -255,7 +250,7 @@ impl Visualization {
                     div(ui, |ui| {
                         if ui.button("clear").clicked() {
                             self.run = false;
-                            //self.state_saver.reset()
+                            self.state_saver.reset()
                         }
                     });
 
@@ -289,17 +284,14 @@ impl Visualization {
                         
                     } else {
                         div(ui, |ui| {
-                            ui.label("Out of bounds sdfghs");
+                            ui.label("Out of bounds");
                         });
                     }
                 });
             });
             
-             */
-
-            /*
             egui::SidePanel::new(Side::Right, Id::new("Right Panel")).show(ctx, |ui| {
-                puffin::profile_scope!("Right Panel");
+                puffin::profile_scope!("Right Panel  ");
 
                 ui.set_min_width(200.0);
 
@@ -309,7 +301,6 @@ impl Visualization {
 
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
-                        /*
                         for (i, working_grid) in self.state_saver.get_state().working_grids.iter().enumerate() {
 
                             let response = if self.current_working_grid == Some(i) {
@@ -322,8 +313,6 @@ impl Visualization {
                                 self.current_working_grid = Some(i);
                             }
                         }
-                        
-                         */
                     });
                 });
             });
@@ -332,7 +321,7 @@ impl Visualization {
                 puffin::profile_scope!("Center Panel");
 
                 let available_size = egui_vec2_to_glam_vec2(ui.available_size());
-                //self.grid_renderer.wanted_size = available_size.as_uvec2();
+                self.grid_renderer.wanted_size = available_size.as_uvec2();
 
 
                 if let Some(Pos2{x, y}) = ui.ctx().pointer_latest_pos() {
@@ -344,18 +333,14 @@ impl Visualization {
                     self.pointer_pos_in_grid = None;
                 }
 
-                /*let image = self.grid_renderer.get_egui_image(frame_index);
+                let image = self.grid_renderer.get_egui_image(frame_index);
                 if image.is_some() {
                     ui.add(image.unwrap());
                 }
-                 */
+                
             });
             
-             */
         })?;
-       
-
-        
         
         command_buffer.end_rendering();
 
