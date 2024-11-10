@@ -5,12 +5,13 @@ use octa_force::gui::Gui;
 use crate::visualization::Visualization;
 
 mod util;
-pub mod render;
+mod render;
 mod grid;
 mod rules;
 mod visualization;
 mod grid_manager;
 mod value;
+mod rule_gen;
 
 pub struct RenderState {
     visualization: Visualization,

@@ -1,10 +1,10 @@
 use std::time::Duration;
 use reload::{on_recreate_swapchain, on_window_event, record_render_commands, update, RenderState, LogicState, new_render_state, new_logic_state};
 use octa_force::{Engine, EngineConfig, EngineFeatureValue, OctaResult};
-use octa_force::binding::{Binding, HotReloadBinding};
 use octa_force::binding::r#trait::BindingTrait;
 use octa_force::egui_winit::winit::event::WindowEvent;
 use octa_force::glam::uvec2;
+use octa_force::hot_reloading::HotReloadConfig;
 
 const WIDTH: u32 = 1920; // 2200;
 const HEIGHT: u32 = 1080; // 1250;
@@ -19,9 +19,11 @@ fn main() {
             compute_rendering: EngineFeatureValue::Needed,
             validation_layers: EngineFeatureValue::Needed,
             shader_debug_printing: EngineFeatureValue::Needed,
-        },
-        vec![Binding::HotReload(
-            HotReloadBinding::new("target/debug".to_string(), "reload".to_string()).unwrap())]).unwrap()
+            hot_reload_config: Some(HotReloadConfig{ 
+                lib_dir: "target/debug".to_string(), 
+                lib_name: "reload".to_string() 
+            }),
+        }).unwrap()
 }
 
 struct App {}

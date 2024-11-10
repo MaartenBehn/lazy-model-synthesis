@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 use std::iter::repeat;
 use octa_force::glam::IVec2;
 use crate::grid::{get_node_index_from_pos, is_pos_in_grid, Grid, NodeIndex};
-use crate::rules::{NeighborReq, Rule};
+use crate::rules::{Rule, RuleReq};
 use crate::util::state_saver::State;
 use crate::value::{Value, VALUE_NONE};
 
@@ -25,12 +25,12 @@ pub struct WorkingGrid {
 }
 
 impl GridManager {
-    pub fn new(grid: Grid) -> Self {
+    pub fn new(grid: Grid, rules: Vec<Rule>) -> Self {
         GridManager{
             grid,
             working_grids: VecDeque::new(),
             done_grids: Vec::new(),
-            rules: vec![],
+            rules,
         }
     }
 
@@ -73,67 +73,47 @@ impl GridManager {
         let node_index = get_node_index_from_pos(pos);
         let value = working_grid.get_node_value_with_node_index(node_index);
         
-        let mut grid_ok = true;
-        
         let mut new_grids = vec![];
-        let mut new_values_positions = vec![];
-        for req in self.get_reqs_for_value(value) {
-            let req_pos = pos + req.offset;
+        for rule_req in self.get_reqs_for_value(value) {
+
+            let mut grid_ok = true;
+            let mut added_value = false;
+            let mut new_working_grid = working_grid.to_owned();
             
-            if !is_pos_in_grid(req_pos) {
-                continue
-            }
-            
-            let req_node_index = get_node_index_from_pos(req_pos);
-            let already_set_value = working_grid.empty_grid.nodes[req_node_index];
+            for (offset, req_value) in rule_req.reqs.iter() {
+                let req_pos = pos + *offset;
 
-
-            if already_set_value.is_none() {
-                new_values_positions.push((req_pos, req_node_index, req.req_types.clone()));
-
-            } else {
-                let already_set_value = already_set_value;
-                let value_found = req.req_types.iter().find(|t| {**t == already_set_value}).is_some();
-                
-                if !value_found {
-                    grid_ok = false;
+                if !is_pos_in_grid(req_pos) {
+                    continue
                 }
-            }
-        }
 
-        if !new_values_positions.is_empty() {
-            let mut permutation_indices: Vec<_> = repeat(0).take(new_values_positions.len()).collect();
-            let last_index = new_values_positions.len();
-            while permutation_indices[0] < new_values_positions[0].2.len() {
+                let req_node_index = get_node_index_from_pos(req_pos);
+                let already_set_value = working_grid.empty_grid.nodes[req_node_index];
 
-                let mut new_working_grid = working_grid.to_owned();
+                if already_set_value.is_none() {
+                    new_working_grid.set_node_value_with_node_index(req_node_index, *req_value);
 
-                for i in 0..last_index {
-                    let (req_pos, req_node_index, reqs) = &new_values_positions[i];
-                    let req_value = reqs[permutation_indices[i]];
-
-                    new_working_grid.set_node_value_with_node_index(*req_node_index, req_value);
-
-                    let satisfied = working_grid.full_grid.nodes[*req_node_index] == req_value;
+                    let satisfied = working_grid.full_grid.nodes[req_node_index] == *req_value;
                     if !satisfied {
-                        new_working_grid.orders.push_back(*req_pos);
+                        new_working_grid.orders.push_back(req_pos);
                     }
-                }
 
-                new_grids.push(new_working_grid);
+                    added_value = true;
 
-                permutation_indices[last_index - 1] += 1;
-                for i in (1..last_index).rev() {
-                    if permutation_indices[i] >= new_values_positions[i].2.len() {
-                        permutation_indices[i] = 0;
-                        permutation_indices[i - 1] += 1;
-                    } else {
-                        break
+                } else {
+                    let already_set_value = already_set_value;
+                    
+                    if already_set_value != *req_value {
+                        grid_ok = false;
                     }
                 }
             }
+            
+            if added_value && grid_ok {
+                new_grids.push(new_working_grid);
+            }
         }
-
+        
         if new_grids.is_empty() && !working_grid.orders.is_empty() {
             self.insert_working_grid(working_grid);
         }
@@ -150,8 +130,8 @@ impl GridManager {
         done_grids
     }
     
-    pub fn get_reqs_for_value(&self, value_type: Value) -> &[NeighborReq] {
-        &self.rules[value_type.get_value_nr() as usize].neighbor_reqs
+    pub fn get_reqs_for_value(&self, value_type: Value) -> &[RuleReq] {
+        &self.rules[value_type.get_value_nr() as usize].reqs
     } 
     
     pub fn insert_working_grid(&mut self, working_grid: WorkingGrid) {

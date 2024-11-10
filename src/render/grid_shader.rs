@@ -10,6 +10,8 @@ pub fn grid_shader() -> &'static [u8] {
         vec4 rgb(uint r, uint g, uint b) {
             return vec4(float(r) / 255.0, float(g) / 255.0, float(b) / 255.0, 1.0);
         }
+        
+        #define MOD(a, b) (a - (b * (a/b)))
     
         #define BORDER_SIZE 0.02
         #define SELECTOR_COLOR rgb(100, 255, 255)
@@ -28,8 +30,15 @@ pub fn grid_shader() -> &'static [u8] {
         #define SELECTOR_POS ivec2(render_data.selector_pos_x, render_data.selector_pos_y)
     
         #define PIXELS_PER_NODE 30
+        
+        layout(binding = 2) buffer ColorBuffer {
+            uint[] data;
+        } color_buffer;
+        
+        #define COLOR_PART(index, i) ((color_buffer.data[index] >> (8 * i)) & 255)
+        #define NODE_COLOR(index) rgb(COLOR_PART(index, 0), COLOR_PART(index , 1), COLOR_PART(index, 2))
     
-        layout(binding = 2) buffer ChunkBuffer {
+        layout(binding = 3) buffer ChunkBuffer {
             uint[] data;
         } chunk_buffer;
     
@@ -37,7 +46,7 @@ pub fn grid_shader() -> &'static [u8] {
         #define GET_NODE_AT(pos) chunk_buffer.data[pos.x * CHUNK_SIZE + pos.y]
     
         vec4 node_color(uint data) {
-            return vec4(0.0);
+            return vec4(NODE_COLOR(data));
         }
     
         bool at_boarder(vec2 v, float border_size) {

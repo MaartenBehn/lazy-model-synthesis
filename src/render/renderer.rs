@@ -13,7 +13,7 @@ use octa_force::anyhow::Result;
 use octa_force::egui::load::SizedTexture;
 use octa_force::vulkan::gpu_allocator::MemoryLocation;
 use crate::render::grid_shader::grid_shader;
-use crate::value::Value;
+use crate::value::{Value, ValueColor};
 
 const DISPATCH_GROUP_SIZE_X: u32 = 32;
 const DISPATCH_GROUP_SIZE_Y: u32 = 32;
@@ -39,6 +39,7 @@ pub struct GridRenderer {
 
     render_data: RenderData,
     render_buffer: Buffer,
+    color_buffer: Buffer,
     chunk_buffer: Buffer
 }
 
@@ -72,7 +73,7 @@ impl GridRenderer {
                 },
                 vk::DescriptorPoolSize {
                     ty: vk::DescriptorType::STORAGE_BUFFER,
-                    descriptor_count: num_frames as u32,
+                    descriptor_count: (num_frames * 2) as u32,
                 },
             ],
         ).unwrap();
@@ -104,6 +105,13 @@ impl GridRenderer {
             },
             vk::DescriptorSetLayoutBinding {
                 binding: 2,
+                descriptor_count: 1,
+                descriptor_type: vk::DescriptorType::STORAGE_BUFFER,
+                stage_flags: vk::ShaderStageFlags::COMPUTE,
+                ..Default::default()
+            },
+            vk::DescriptorSetLayoutBinding {
+                binding: 3,
                 descriptor_count: 1,
                 descriptor_type: vk::DescriptorType::STORAGE_BUFFER,
                 stage_flags: vk::ShaderStageFlags::COMPUTE,
@@ -155,6 +163,12 @@ impl GridRenderer {
         };
         render_buffer.copy_data_to_buffer(&[render_data])?;
 
+        let color_buffer = context.create_buffer(
+            BufferUsageFlags::STORAGE_BUFFER,
+            MemoryLocation::CpuToGpu,
+            (256 * size_of::<ValueColor>()) as _
+        )?;
+
         let chunk_buffer = context.create_buffer(
             BufferUsageFlags::STORAGE_BUFFER,
             MemoryLocation::CpuToGpu,
@@ -181,6 +195,7 @@ impl GridRenderer {
 
             render_data,
             render_buffer,
+            color_buffer,
             chunk_buffer,
         })
     }
@@ -267,6 +282,12 @@ impl GridRenderer {
                     WriteDescriptorSet {
                         binding: 2,
                         kind: WriteDescriptorSetKind::StorageBuffer {
+                            buffer: &self.color_buffer,
+                        },
+                    },
+                    WriteDescriptorSet {
+                        binding: 3,
+                        kind: WriteDescriptorSetKind::StorageBuffer {
                             buffer: &self.chunk_buffer,
                         },
                     },
@@ -287,6 +308,10 @@ impl GridRenderer {
 
     pub fn set_chunk_data(&mut self, chunk_data: &[Value]) {
         self.chunk_buffer.copy_data_to_buffer(chunk_data).unwrap()
+    }
+    
+    pub fn set_value_colors(&mut self, colors: &[ValueColor]) {
+        self.color_buffer.copy_data_to_buffer(colors).unwrap()
     }
 
     pub fn set_selector_pos(&mut self, selector_pos: Option<IVec2>) {

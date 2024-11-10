@@ -4,87 +4,30 @@ use crate::value::Value;
 pub const NUM_VALUES: usize = 3;
 pub const NUM_REQS: usize = 8;
 
-
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Rule {
-    pub value_type: Value,
-    pub neighbor_reqs: Vec<NeighborReq>,
+    pub value: Value,
+    pub reqs: Vec<RuleReq>,
 }
 
-#[derive(Clone)]
-pub struct NeighborReq {
-    pub req_types: Vec<Value>,
-    pub offset: IVec2,
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct RuleReq {
+    pub reqs: Vec<(IVec2, Value)>
 }
 
-/*
-pub fn get_example_rules() -> Vec<Rule> {
-    vec![
-        Rule {
-            value_type: Value::Stone,
-            neighbor_reqs: vec![
-                NeighborReq {
-                    req_types: vec![Value::Stone, Value::Grass],
-                    offset: IVec2::new(1, 0),
-                },
-                NeighborReq {
-                    req_types: vec![Value::Stone, Value::Grass],
-                    offset: IVec2::new(-1, 0),
-                },
-                NeighborReq {
-                    req_types: vec![Value::Stone],
-                    offset: IVec2::new(0, 1),
-                },
-                NeighborReq {
-                    req_types: vec![Value::Stone],
-                    offset: IVec2::new(0, -1),
-                },
-            ],
-        },
-        Rule {
-            value_type: Value::Grass,
-            neighbor_reqs: vec![
-                NeighborReq {
-                    req_types: vec![Value::Grass, Value::Stone, Value::Sand],
-                    offset: IVec2::new(1, 0),
-                },
-                NeighborReq {
-                    req_types: vec![Value::Grass, Value::Stone, Value::Sand],
-                    offset: IVec2::new(-1, 0),
-                },
-                NeighborReq {
-                    req_types: vec![Value::Grass],
-                    offset: IVec2::new(0, 1),
-                },
-                NeighborReq {
-                    req_types: vec![Value::Grass],
-                    offset: IVec2::new(0, -1),
-                },
-            ],
-        },
-        Rule {
-            value_type: Value::Sand,
-            neighbor_reqs: vec![
-                NeighborReq {
-                    req_types: vec![Value::Grass, Value::Sand],
-                    offset: IVec2::new(1, 0),
-                },
-                NeighborReq {
-                    req_types: vec![Value::Grass, Value::Sand],
-                    offset: IVec2::new(-1, 0),
-                },
-                NeighborReq {
-                    req_types: vec![Value::Sand],
-                    offset: IVec2::new(0, 1),
-                },
-                NeighborReq {
-                    req_types: vec![Value::Sand],
-                    offset: IVec2::new(0, -1),
-                },
-            ],
-        },
-    ]
+impl Rule {
+    pub fn new(value: Value) -> Self {
+        Rule{
+            value,
+            reqs: vec![],
+        }
+    } 
 }
- */
 
-
+impl RuleReq {
+    pub fn new() -> Self {
+        RuleReq {
+            reqs: vec![],
+        }
+    }
+}

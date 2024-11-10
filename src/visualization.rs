@@ -15,8 +15,10 @@ use octa_force::vulkan::ash::vk::AttachmentLoadOp;
 use crate::grid_manager::GridManager;
 use crate::render::renderer::GridRenderer;
 use crate::render::selector::Selector;
+use crate::rule_gen::gen_rules_from_image;
+use crate::rules::Rule;
 use crate::util::state_saver::StateSaver;
-use crate::value::Value;
+use crate::value::{Value, ValueColor};
 
 pub const GRID_SIZE: usize = 32;
 const DEBUG_MODE: bool = true;
@@ -28,6 +30,8 @@ pub struct Visualization {
 
     pub grid_renderer: GridRenderer,
     pub selector: Selector,
+    
+    value_colors: Vec<ValueColor>,
 
     run: bool,
     run_ticks_per_frame: usize,
@@ -37,10 +41,22 @@ pub struct Visualization {
 
 impl Visualization {
     pub fn new(engine: &mut Engine) -> Result<Self> {
-
+        let (rules, value_colors) = gen_rules_from_image(
+            "WaveFunctionCollapse/samples/Angular.png", 
+            vec![
+                ivec2(-1, -1),
+                ivec2(-1, 0),
+                ivec2(-1, 1),
+                ivec2(0, -1),
+                ivec2(0, 1),
+                ivec2(1, -1),
+                ivec2(1, 0),
+                ivec2(1, 1),
+            ])?;
+        
         let grid = Grid::new(Value(1));
         
-        let grid_manager = GridManager::new(grid);
+        let grid_manager = GridManager::new(grid, rules);
         
         let state_saver = StateSaver::from_state(grid_manager, 100);
 
@@ -52,11 +68,13 @@ impl Visualization {
             engine.num_frames
         )?;
 
-        let grid_renderer = GridRenderer::new(&mut engine.context, &mut gui.renderer, engine.num_frames, GRID_SIZE, 1)?;
+        let mut grid_renderer = GridRenderer::new(&mut engine.context, &mut gui.renderer, engine.num_frames, GRID_SIZE, 1)?;
         let selector = Selector::new();
+
+        grid_renderer.set_value_colors(&value_colors);
         
         
-        let mut v = Visualization {
+        let v = Visualization {
             state_saver,
             gui,
             grid_renderer,
@@ -65,6 +83,7 @@ impl Visualization {
             run_ticks_per_frame: 10,
             pointer_pos_in_grid: None,
             current_working_grid: None,
+            value_colors,
         };
         //v.place_random_value();
         
