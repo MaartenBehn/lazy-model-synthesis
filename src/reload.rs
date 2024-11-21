@@ -2,6 +2,8 @@ use std::time::Duration;
 use octa_force::{Engine, OctaResult};
 use octa_force::egui_winit::winit::event::WindowEvent;
 use octa_force::gui::Gui;
+use octa_force::log::Log;
+use octa_force::logger::setup_logger;
 use crate::visualization::Visualization;
 
 mod util;
@@ -23,10 +25,17 @@ pub struct LogicState {
 }
 
 #[no_mangle]
+pub fn init_hot_reload(logger: &'static dyn Log) -> OctaResult<()> {
+    setup_logger(logger)?;
+
+    Ok(())
+}
+
+#[no_mangle]
 pub fn new_render_state(engine: &mut Engine) -> OctaResult<RenderState> {
     let visualization = Visualization::new(engine)?;
-
-    let mut gui = Gui::new(
+    
+    let gui = Gui::new(
         &engine.context,
         engine.swapchain.format,
         engine.swapchain.depth_format,
@@ -34,6 +43,8 @@ pub fn new_render_state(engine: &mut Engine) -> OctaResult<RenderState> {
         engine.num_frames
     )?;
 
+    
+    
     Ok(RenderState {
         visualization,
         gui,
@@ -41,7 +52,7 @@ pub fn new_render_state(engine: &mut Engine) -> OctaResult<RenderState> {
 }
 
 #[no_mangle]
-pub fn new_logic_state(engine: &mut Engine) -> OctaResult<LogicState> {
+pub fn new_logic_state(_: &mut Engine) -> OctaResult<LogicState> {
     Ok(LogicState {
         
     })

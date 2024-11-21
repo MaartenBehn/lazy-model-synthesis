@@ -14,7 +14,8 @@ pub fn grid_shader() -> &'static [u8] {
         #define MOD(a, b) (a - (b * (a/b)))
     
         #define BORDER_SIZE 0.02
-        #define SELECTOR_COLOR rgb(100, 255, 255)
+        #define SELECTOR_COLOR rgb(100, 100, 100)
+        #define ORDER_COLOR rgb(0, 0, 255)
     
         layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
     
@@ -43,7 +44,8 @@ pub fn grid_shader() -> &'static [u8] {
         } chunk_buffer;
     
         #define POS_IN_BOUNDS(pos) pos.x < CHUNK_SIZE && pos.y < CHUNK_SIZE
-        #define GET_NODE_AT(pos) chunk_buffer.data[pos.x * CHUNK_SIZE + pos.y]
+        #define GET_NODE_AT(pos) chunk_buffer.data[pos.x * CHUNK_SIZE + pos.y] & 255
+        #define IS_NODE_ORDER(pos) bool((chunk_buffer.data[pos.x * CHUNK_SIZE + pos.y] >> 8) & 1)
     
         vec4 node_color(uint data) {
             return vec4(NODE_COLOR(data));
@@ -56,6 +58,10 @@ pub fn grid_shader() -> &'static [u8] {
         vec4 debug_overlay(vec4 color, uvec2 node_pos, vec2 in_node_pos) {
             if (ivec2(node_pos) == SELECTOR_POS && at_boarder(in_node_pos, BORDER_SIZE)) {
                 return SELECTOR_COLOR;
+            }
+            
+            if (IS_NODE_ORDER(node_pos) && at_boarder(in_node_pos, BORDER_SIZE * 2.0)) {
+                return ORDER_COLOR;
             }
     
             return color;

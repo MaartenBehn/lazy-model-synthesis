@@ -1,10 +1,11 @@
+use crate::value::VALUE_NONE;
 use std::collections::VecDeque;
-use std::iter::repeat;
 use octa_force::glam::IVec2;
+use octa_force::log::debug;
 use crate::grid::{get_node_index_from_pos, is_pos_in_grid, Grid, NodeIndex};
 use crate::rules::{Rule, RuleReq};
 use crate::util::state_saver::State;
-use crate::value::{Value, VALUE_NONE};
+use crate::value::{Value};
 
 #[derive(Clone)]
 pub struct GridManager {
@@ -21,7 +22,9 @@ pub struct GridManager {
 pub struct WorkingGrid {
     pub full_grid: Grid,
     pub empty_grid: Grid,
-    pub orders: VecDeque<IVec2>
+    pub orders: VecDeque<(IVec2, bool)>,
+    pub satisfied_count: usize,
+    pub set_count: usize,
 }
 
 impl GridManager {
@@ -40,8 +43,9 @@ impl GridManager {
         let node_index = get_node_index_from_pos(pos);
         
         let mut working_grid: WorkingGrid = self.grid.to_owned().into();
-        working_grid.set_node_value_with_node_index(node_index, value);
-        working_grid.orders.push_back(pos);
+        working_grid.set_node_value_with_node_index(node_index, value, false);
+        working_grid.orders.push_back((pos, false));
+        working_grid.empty_grid.nodes[node_index].set_order(true);
         
         self.working_grids.push_back(working_grid);
     }
@@ -59,7 +63,8 @@ impl GridManager {
             return true
         }
         
-        let done_working_grids = self.tick_order_on_working_grid(working_grid, order.unwrap());
+        let (pos, satisfied) = order.unwrap();
+        let done_working_grids = self.tick_order_on_working_grid(working_grid, pos, satisfied);
 
         if !done_working_grids.is_empty() {
             self.grid = done_working_grids[0].full_grid;
@@ -69,8 +74,14 @@ impl GridManager {
         true
     }
     
-    pub fn tick_order_on_working_grid(&mut self, mut working_grid: WorkingGrid, pos: IVec2) -> Vec<WorkingGrid> {
+    pub fn tick_order_on_working_grid(&mut self, mut working_grid: WorkingGrid, pos: IVec2, satisfied: bool) -> Vec<WorkingGrid> {
         let node_index = get_node_index_from_pos(pos);
+        working_grid.empty_grid.nodes[node_index].set_order(false);
+        
+        if (satisfied) {
+            debug!("Stop")
+        }
+        
         let value = working_grid.get_node_value_with_node_index(node_index);
         
         let mut new_grids = vec![];
@@ -78,6 +89,7 @@ impl GridManager {
 
             let mut grid_ok = true;
             let mut added_value = false;
+            let mut fully_satisfied = true;
             let mut new_working_grid = working_grid.to_owned();
             
             for (offset, req_value) in rule_req.reqs.iter() {
@@ -91,31 +103,28 @@ impl GridManager {
                 let already_set_value = working_grid.empty_grid.nodes[req_node_index];
 
                 if already_set_value.is_none() {
-                    new_working_grid.set_node_value_with_node_index(req_node_index, *req_value);
-
-                    let satisfied = working_grid.full_grid.nodes[req_node_index] == *req_value;
-                    if !satisfied {
-                        new_working_grid.orders.push_back(req_pos);
+                    let req_satisfied = working_grid.full_grid.nodes[req_node_index].color_index == req_value.color_index;
+                    new_working_grid.set_node_value_with_node_index(req_node_index, *req_value, req_satisfied);
+                    
+                    if !satisfied || !req_satisfied {
+                        new_working_grid.orders.push_back((req_pos, req_satisfied));
+                        new_working_grid.empty_grid.nodes[req_node_index].set_order(true);
+                        fully_satisfied = false;
                     }
 
                     added_value = true;
-
                 } else {
                     let already_set_value = already_set_value;
                     
-                    if already_set_value != *req_value {
+                    if already_set_value.color_index != req_value.color_index {
                         grid_ok = false;
                     }
                 }
             }
             
-            if added_value && grid_ok {
+            if  grid_ok && (added_value || fully_satisfied) {
                 new_grids.push(new_working_grid);
             }
-        }
-        
-        if new_grids.is_empty() && !working_grid.orders.is_empty() {
-            self.insert_working_grid(working_grid);
         }
 
         let mut done_grids = vec![];
@@ -135,7 +144,7 @@ impl GridManager {
     } 
     
     pub fn insert_working_grid(&mut self, working_grid: WorkingGrid) {
-        let res = self.working_grids.binary_search_by(|w| {w.orders.len().cmp(&working_grid.orders.len())});
+        let res = self.working_grids.binary_search_by(|w| {w.get_score().cmp(&working_grid.get_score())});
         let index = if res.is_err() { res.err().unwrap() } else { res.unwrap() };
 
         self.working_grids.insert(index, working_grid);
@@ -147,19 +156,34 @@ impl From<Grid> for WorkingGrid {
         WorkingGrid {
             full_grid: grid,
             orders: VecDeque::new(),
+            satisfied_count: 0,
             empty_grid: Grid::new(VALUE_NONE),
+            set_count: 0,
         }
     }
 }
 
 impl WorkingGrid {
-    pub fn set_node_value_with_node_index(&mut self, node_index: NodeIndex, value: Value) {
+    pub fn set_node_value_with_node_index(&mut self, node_index: NodeIndex, value: Value, satisfied: bool) {
         self.full_grid.nodes[node_index] = value;
         self.empty_grid.nodes[node_index] = value;
+        self.set_count += 1;
+        
+        if satisfied {
+            self.satisfied_count += 1;
+        }
     }
 
     pub fn get_node_value_with_node_index(&mut self, node_index: NodeIndex) -> Value {
         self.empty_grid.nodes[node_index]
+    }
+
+    pub fn get_score(&self) -> i64 {
+        //let not_s_orders = self.orders.iter().filter(|(_, s)| !s).count() as i64;
+        
+        //((1.0 - (self.satisfied_count as f32 / self.set_count as f32)) * 10.0) as i64 + not_s_orders
+
+        self.set_count as i64 - self.satisfied_count as i64
     }
 }
 

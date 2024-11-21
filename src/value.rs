@@ -1,11 +1,21 @@
 use image::Rgba;
 
-pub const VALUE_NONE: Value = Value(0);
+pub type ValueNr = u8;
 
-pub type ValueNr = u32;
+pub const VALUE_NONE: Value = Value {
+    color_index: 0,
+    debug: 0,
+    fill: 0,
+    fill2: 0,
+};
 
 #[derive(Default, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Debug)]
-pub struct Value(pub u32);
+pub struct Value{
+    pub color_index: u8,
+    debug: u8,
+    fill: u8,
+    fill2: u8,
+}
 
 #[derive(Default, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub struct ValueColor{
@@ -17,16 +27,29 @@ pub struct ValueColor{
 
 impl Value {
     pub fn is_none(&self) -> bool {
-        *self == VALUE_NONE
+        self.color_index == 0
     }
     pub fn is_some(&self) -> bool {
         !self.is_none()
     }
     pub fn get_value_nr(&self) -> ValueNr {
-        (*self).0 - 1
+        (self.color_index - 1 ) as ValueNr
     }
     pub fn from_value_nr(value_nr: ValueNr) -> Value {
-        Value{ 0: value_nr + 1 }
+        Value{
+            color_index: (value_nr + 1) as u8,
+            debug: 0,
+            fill: 0,
+            fill2: 0,
+        }
+    }
+    
+    pub fn set_order(&mut self, val: bool) {
+        if val {
+            self.debug |= 1; 
+        } else {
+            self.debug &= !1;
+        }
     }
 }
 

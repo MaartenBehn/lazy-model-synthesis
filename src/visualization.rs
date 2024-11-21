@@ -1,39 +1,39 @@
-use crate::grid::{get_node_index_from_pos, Grid};
+use crate::grid::{Grid};
 use crate::util::state_saver::TickType;
 use std::time::Duration;
 use octa_force::gui::Gui;
 use octa_force::anyhow::*;
 use octa_force::{egui, glam, Engine};
-use octa_force::egui::{Align, FontId, Frame, Id, Layout, Pos2, RichText, Ui, Widget};
+use octa_force::egui::{Align, FontId, Frame, Id, Layout, Pos2, Ui, Widget};
 use octa_force::egui::FontFamily::Proportional;
 use octa_force::egui::panel::Side;
 use octa_force::egui::TextStyle::{Body, Button, Heading, Monospace, Small};
 use octa_force::egui_winit::winit::event::WindowEvent;
 use octa_force::glam::{ivec2, vec2, Vec2};
+use octa_force::log::info;
 use octa_force::puffin_egui::puffin;
 use octa_force::vulkan::ash::vk::AttachmentLoadOp;
 use crate::grid_manager::GridManager;
 use crate::render::renderer::GridRenderer;
 use crate::render::selector::Selector;
 use crate::rule_gen::gen_rules_from_image;
-use crate::rules::Rule;
 use crate::util::state_saver::StateSaver;
 use crate::value::{Value, ValueColor};
 
 pub const GRID_SIZE: usize = 32;
-const DEBUG_MODE: bool = true;
 
 pub struct Visualization {
     pub gui: Gui,
     
     pub state_saver: StateSaver<GridManager>,
-
+    
     pub grid_renderer: GridRenderer,
     pub selector: Selector,
     
     value_colors: Vec<ValueColor>,
 
     run: bool,
+    show_full: bool,
     run_ticks_per_frame: usize,
     pointer_pos_in_grid: Option<Vec2>,
     current_working_grid: Option<usize>,
@@ -41,8 +41,10 @@ pub struct Visualization {
 
 impl Visualization {
     pub fn new(engine: &mut Engine) -> Result<Self> {
+        info!("TEST");
+        
         let (rules, value_colors) = gen_rules_from_image(
-            "WaveFunctionCollapse/samples/Angular.png", 
+            "WaveFunctionCollapse/samples/Hogs.png", 
             vec![
                 ivec2(-1, -1),
                 ivec2(-1, 0),
@@ -54,7 +56,7 @@ impl Visualization {
                 ivec2(1, 1),
             ])?;
         
-        let grid = Grid::new(Value(1));
+        let grid = Grid::new(Value::from_value_nr(0));
         
         let grid_manager = GridManager::new(grid, rules);
         
@@ -80,6 +82,7 @@ impl Visualization {
             grid_renderer,
             selector,
             run: false,
+            show_full: true,
             run_ticks_per_frame: 10,
             pointer_pos_in_grid: None,
             current_working_grid: None,
@@ -120,32 +123,30 @@ impl Visualization {
             self.current_working_grid = None;
         }
 
+        self.selector.set_selected_pos(self.pointer_pos_in_grid);
+        self.grid_renderer.set_selector_pos(self.selector.selected_pos);
         
         let working_grids = &mut self.state_saver.get_state_mut().working_grids;
         if self.current_working_grid.is_some() {
-            self.selector.set_selected_pos(self.pointer_pos_in_grid, &mut working_grids[self.current_working_grid.unwrap()].full_grid);
             
-            
-            self.grid_renderer.set_selector_pos(self.selector.selected_pos);
-            self.grid_renderer.set_chunk_data(&working_grids[self.current_working_grid.unwrap()].full_grid.nodes);
+            if self.show_full {
+                self.grid_renderer.set_chunk_data(&working_grids[self.current_working_grid.unwrap()].full_grid.nodes);
+            } else {
+                self.grid_renderer.set_chunk_data(&working_grids[self.current_working_grid.unwrap()].empty_grid.nodes);
+            }
 
             self.grid_renderer.update(&mut engine.context, engine.swapchain.format, frame_index);
             
-             
-
-            self.selector.clear_from_render_data(&mut working_grids[self.current_working_grid.unwrap()].full_grid);
-
+            if self.show_full {
+                self.selector.clear_from_render_data(&mut working_grids[self.current_working_grid.unwrap()].full_grid);
+            } else {
+                self.selector.clear_from_render_data(&mut working_grids[self.current_working_grid.unwrap()].empty_grid);
+            }
         } else {
-            self.selector.set_selected_pos(self.pointer_pos_in_grid, &mut self.state_saver.get_state_mut().grid);
-
-            
-            self.grid_renderer.set_selector_pos(self.selector.selected_pos);
             self.grid_renderer.set_chunk_data(&self.state_saver.get_state().grid.nodes);
 
             self.grid_renderer.update(&mut engine.context, engine.swapchain.format, frame_index);
             
-             
-
             self.selector.clear_from_render_data(&mut self.state_saver.get_state_mut().grid);
         }
         
@@ -271,6 +272,8 @@ impl Visualization {
                             self.run = false;
                             self.state_saver.reset()
                         }
+
+                        ui.checkbox(&mut self.show_full, "show full");
                     });
 
                     ui.separator();
@@ -282,7 +285,7 @@ impl Visualization {
                             let value = Value::from_value_nr(i);
                             
                             let mut checked = self.selector.value_type_to_place == value; 
-                            ui.checkbox(&mut checked, format!("{:?}", value));
+                            ui.checkbox(&mut checked, format!("Value {}", i));
                             if checked {
                                 self.selector.value_type_to_place = value;
                             }
@@ -292,20 +295,17 @@ impl Visualization {
 
                     ui.separator();
 
-                    div(ui, |ui| {
-                        ui.heading("Selected Node");
-                    });
+                    ui.heading("Selected Node");
 
                     if let Some(pos) = self.selector.selected_pos {
-                        div(ui, |ui| {
-                            ui.label(format!("Pos: [{:0>2} {:0>2}]", pos.x, pos.y));
-                        });
-                        
+                        ui.label(format!("Pos: [{:0>2} {:0>2}]", pos.x, pos.y));
                     } else {
-                        div(ui, |ui| {
-                            ui.label("Out of bounds");
-                        });
+                        ui.label("Out of bounds");
                     }
+
+                    ui.separator();
+                    ui.heading("Working Grids");
+                    ui.label(format!("Active: {}", self.state_saver.get_state().working_grids.len()));
                 });
             });
             
@@ -323,9 +323,20 @@ impl Visualization {
                         for (i, working_grid) in self.state_saver.get_state().working_grids.iter().enumerate() {
 
                             let response = if self.current_working_grid == Some(i) {
-                                ui.heading(format!("{i}: orders: {}", working_grid.orders.len()))
+                                ui.heading(
+                                    format!("{i}: orders: {} ({}, {}, {})", 
+                                            working_grid.get_score(), 
+                                            working_grid.orders.len(), 
+                                            working_grid.satisfied_count,
+                                            working_grid.set_count
+                                    ))
                             } else {
-                                ui.label(format!("{i}: orders: {}", working_grid.orders.len()))
+                                ui.label(format!("{i}: orders: {} ({}, {}, {})",
+                                                 working_grid.get_score(),
+                                                 working_grid.orders.len(),
+                                                 working_grid.satisfied_count,
+                                                 working_grid.set_count
+                                ))
                             };
 
                             if response.hovered() {

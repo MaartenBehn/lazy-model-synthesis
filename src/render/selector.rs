@@ -18,7 +18,7 @@ impl Selector {
         }
     }
 
-    pub fn set_selected_pos(&mut self, pos: Option<Vec2>, grid: &mut Grid) {
+    pub fn set_selected_pos(&mut self, pos: Option<Vec2>) {
         if pos.is_none() {
             self.selected_pos = None;
             return;
