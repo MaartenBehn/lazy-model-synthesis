@@ -78,17 +78,12 @@ impl GridManager {
         let node_index = get_node_index_from_pos(pos);
         working_grid.empty_grid.nodes[node_index].set_order(false);
         
-        if (satisfied) {
-            debug!("Stop")
-        }
-        
         let value = working_grid.get_node_value_with_node_index(node_index);
         
         let mut new_grids = vec![];
         for rule_req in self.get_reqs_for_value(value) {
 
             let mut grid_ok = true;
-            let mut added_value = false;
             let mut fully_satisfied = true;
             let mut new_working_grid = working_grid.to_owned();
             
@@ -106,13 +101,12 @@ impl GridManager {
                     let req_satisfied = working_grid.full_grid.nodes[req_node_index].color_index == req_value.color_index;
                     new_working_grid.set_node_value_with_node_index(req_node_index, *req_value, req_satisfied);
                     
-                    if !satisfied || !req_satisfied {
-                        new_working_grid.orders.push_back((req_pos, req_satisfied));
-                        new_working_grid.empty_grid.nodes[req_node_index].set_order(true);
+                    new_working_grid.orders.push_back((req_pos, req_satisfied));
+                    new_working_grid.empty_grid.nodes[req_node_index].set_order(true);
+                    
+                    if !req_satisfied {
                         fully_satisfied = false;
                     }
-
-                    added_value = true;
                 } else {
                     let already_set_value = already_set_value;
                     
@@ -121,8 +115,14 @@ impl GridManager {
                     }
                 }
             }
+
+            if grid_ok && fully_satisfied && satisfied {
+                new_grids.clear();
+                new_grids.push(working_grid);
+                break
+            }
             
-            if  grid_ok && (added_value || fully_satisfied) {
+            if grid_ok { 
                 new_grids.push(new_working_grid);
             }
         }
@@ -179,11 +179,7 @@ impl WorkingGrid {
     }
 
     pub fn get_score(&self) -> i64 {
-        //let not_s_orders = self.orders.iter().filter(|(_, s)| !s).count() as i64;
-        
-        //((1.0 - (self.satisfied_count as f32 / self.set_count as f32)) * 10.0) as i64 + not_s_orders
-
-        self.set_count as i64 - self.satisfied_count as i64
+        (self.orders.len() * 10 + self.set_count) as i64
     }
 }
 

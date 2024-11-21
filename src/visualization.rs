@@ -386,7 +386,7 @@ impl Visualization {
     }
 }
 
-fn egui_vec2_to_glam_vec2(v: egui::Vec2) -> glam::Vec2 {
+fn egui_vec2_to_glam_vec2(v: egui::Vec2) -> Vec2 {
     vec2(v.x, v.y)
 }
 
